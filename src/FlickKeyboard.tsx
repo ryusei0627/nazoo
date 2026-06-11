@@ -1,12 +1,13 @@
+// Nazoo — キャンディ・フリックキーボード（新デザイン）
+// 3Dキー＋サブラベル＋フリック十字ポップアップ。4列グリッド・縦長こたえるキー。
 import { useRef, useState } from 'react';
-import { Animated, GestureResponderEvent, StyleSheet, Text, View } from 'react-native';
-import { MOTION, useReducedMotion } from './motion';
+import { GestureResponderEvent, StyleSheet, Text, View } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { COLORS, FONTS } from './theme';
 
 type Dir = 'c' | 'l' | 'u' | 'r' | 'd';
 type FlickMap = Partial<Record<Dir, string>> & { c: string };
 
-// 各キーのフリック割り当て（c=タップ, l=左, u=上, r=右, d=下）
 const KEYS: FlickMap[] = [
   { c: 'あ', l: 'い', u: 'う', r: 'え', d: 'お' },
   { c: 'か', l: 'き', u: 'く', r: 'け', d: 'こ' },
@@ -20,18 +21,9 @@ const KEYS: FlickMap[] = [
   { c: 'わ', l: 'を', u: 'ん', r: 'ー' },
 ];
 
-// フリック判定のしきい値（小さいほど軽く反応する）
-const THRESHOLD = 10;
-
-function pressDown(scale: Animated.Value, reducedMotion: boolean) {
-  if (reducedMotion) return;
-  Animated.timing(scale, { toValue: 0.94, duration: MOTION.fast, easing: MOTION.easeOut, useNativeDriver: false }).start();
-}
-
-function pressUp(scale: Animated.Value, reducedMotion: boolean) {
-  if (reducedMotion) return;
-  Animated.spring(scale, { toValue: 1, friction: 5, tension: 180, useNativeDriver: false }).start();
-}
+const THRESHOLD = 12;
+const KEY_H = 52;
+const GAP = 7;
 
 function dirOf(dx: number, dy: number): Dir {
   if (Math.abs(dx) < THRESHOLD && Math.abs(dy) < THRESHOLD) return 'c';
@@ -39,161 +31,185 @@ function dirOf(dx: number, dy: number): Dir {
   return dy < 0 ? 'u' : 'd';
 }
 
-function FlickKey({ map, onChar }: { map: FlickMap; onChar: (ch: string) => void }) {
-  const reducedMotion = useReducedMotion();
-  const start = useRef({ x: 0, y: 0 });
-  const scale = useRef(new Animated.Value(1)).current;
-  const [pressed, setPressed] = useState(false);
-
-  const grant = (e: GestureResponderEvent) => {
-    start.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
-    setPressed(true);
-    pressDown(scale, reducedMotion);
-  };
-  const release = (e: GestureResponderEvent) => {
-    const d = dirOf(e.nativeEvent.pageX - start.current.x, e.nativeEvent.pageY - start.current.y);
-    onChar(map[d] ?? map.c);
-    setPressed(false);
-    pressUp(scale, reducedMotion);
-  };
-
+function FlickPopup({ map, dir }: { map: FlickMap; dir: Dir }) {
+  const cell = (d: Dir, label: string | undefined, x: number, y: number) =>
+    label ? (
+      <View key={d} style={[styles.flickCell, { left: x, top: y }, dir === d && styles.flickCellActive]}>
+        <Text style={[styles.flickCellText, dir === d && styles.flickCellTextActive]}>{label}</Text>
+      </View>
+    ) : null;
   return (
-    <Animated.View
-      style={[styles.key, pressed && styles.keyPressed, { transform: [{ scale }] }]}
+    <View style={styles.flickPopup} pointerEvents="none">
+      {cell('u', map.u, 44, 0)}
+      {cell('l', map.l, 0, 44)}
+      {cell('c', map.c, 44, 44)}
+      {cell('r', map.r, 88, 44)}
+      {cell('d', map.d, 44, 88)}
+    </View>
+  );
+}
+
+function FlickKey({ map, onChar, onTap }: { map: FlickMap; onChar: (ch: string) => void; onTap?: () => void }) {
+  const start = useRef({ x: 0, y: 0 });
+  const [dir, setDir] = useState<Dir | null>(null);
+  const sub = [map.l, map.u, map.r].filter(Boolean).join(' ');
+  return (
+    <View
+      style={[styles.key, dir != null && styles.keyDown, { flex: 1, zIndex: dir != null ? 60 : 1 }]}
       onStartShouldSetResponder={() => true}
-      onResponderGrant={grant}
-      onResponderRelease={release}
-      onResponderTerminate={() => {
-        setPressed(false);
-        pressUp(scale, reducedMotion);
+      onMoveShouldSetResponder={() => true}
+      onResponderGrant={(e: GestureResponderEvent) => {
+        start.current = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
+        setDir('c');
+        onTap?.();
       }}
+      onResponderMove={(e: GestureResponderEvent) => {
+        setDir(dirOf(e.nativeEvent.pageX - start.current.x, e.nativeEvent.pageY - start.current.y));
+      }}
+      onResponderRelease={(e: GestureResponderEvent) => {
+        const d = dirOf(e.nativeEvent.pageX - start.current.x, e.nativeEvent.pageY - start.current.y);
+        onChar(map[d] ?? map.c);
+        setDir(null);
+      }}
+      onResponderTerminate={() => setDir(null)}
     >
-      <Text style={styles.keyLabel}>{map.c}</Text>
-    </Animated.View>
+      <Text style={styles.keyMain}>{map.c}</Text>
+      {sub ? <Text style={styles.keySub}>{sub}</Text> : null}
+      {dir != null && <FlickPopup map={map} dir={dir} />}
+    </View>
   );
 }
 
 function FuncKey({
+  variant,
   label,
+  sub,
   onPress,
-  bg = '#FFE9C9',
-  color = COLORS.primaryDark,
+  disabled,
+  children,
+  style,
 }: {
-  label: string;
+  variant: 'muted' | 'submit';
+  label?: string;
+  sub?: string;
   onPress: () => void;
-  bg?: string;
-  color?: string;
+  disabled?: boolean;
+  children?: React.ReactNode;
+  style?: any;
 }) {
-  const reducedMotion = useReducedMotion();
-  const scale = useRef(new Animated.Value(1)).current;
-  const [pressed, setPressed] = useState(false);
+  const [down, setDown] = useState(false);
+  const base = variant === 'submit' ? styles.submit : styles.funcMuted;
+  const edgeColor = variant === 'submit' ? COLORS.primaryDark : COLORS.keyMutedEdge;
   return (
-    <Animated.View
-      style={[styles.key, { backgroundColor: bg }, pressed && styles.keyPressed, { transform: [{ scale }] }]}
-      onStartShouldSetResponder={() => true}
-      onResponderGrant={() => {
-        setPressed(true);
-        pressDown(scale, reducedMotion);
-      }}
+    <View
+      style={[styles.key, base, { shadowColor: edgeColor }, down && !disabled && styles.keyDown, disabled && styles.keyDisabled, style]}
+      onStartShouldSetResponder={() => !disabled}
+      onResponderGrant={() => !disabled && setDown(true)}
       onResponderRelease={() => {
-        setPressed(false);
-        pressUp(scale, reducedMotion);
+        if (disabled) return;
+        setDown(false);
         onPress();
       }}
-      onResponderTerminate={() => {
-        setPressed(false);
-        pressUp(scale, reducedMotion);
-      }}
+      onResponderTerminate={() => setDown(false)}
     >
-      <Text style={[styles.funcLabel, { color }]}>{label}</Text>
-    </Animated.View>
-  );
-}
-
-function SubmitKey({ onSubmit }: { onSubmit: () => void }) {
-  const reducedMotion = useReducedMotion();
-  const scale = useRef(new Animated.Value(1)).current;
-  const [pressed, setPressed] = useState(false);
-
-  return (
-    <Animated.View
-      style={[styles.submit, pressed && styles.submitPressed, { transform: [{ scale }] }]}
-      onStartShouldSetResponder={() => true}
-      onResponderGrant={() => {
-        setPressed(true);
-        pressDown(scale, reducedMotion);
-      }}
-      onResponderRelease={() => {
-        setPressed(false);
-        pressUp(scale, reducedMotion);
-        onSubmit();
-      }}
-      onResponderTerminate={() => {
-        setPressed(false);
-        pressUp(scale, reducedMotion);
-      }}
-    >
-      <Text style={styles.submitText}>こたえる</Text>
-    </Animated.View>
+      {children || (
+        <>
+          <Text style={[styles.funcMain, variant === 'submit' && styles.submitLabel]}>{label}</Text>
+          {sub ? <Text style={styles.keySub}>{sub}</Text> : null}
+        </>
+      )}
+    </View>
   );
 }
 
 type Props = {
   onChar: (ch: string) => void;
-  onCycle: () => void; // 小゛゜
+  onCycle: () => void;
   onDelete: () => void;
   onSubmit: () => void;
+  canSubmit?: boolean;
+  onTap?: () => void;
 };
 
-export default function FlickKeyboard({ onChar, onCycle, onDelete, onSubmit }: Props) {
-  const rows = [KEYS.slice(0, 3), KEYS.slice(3, 6), KEYS.slice(6, 9)];
+export default function FlickKeyboard({ onChar, onCycle, onDelete, onSubmit, canSubmit = true, onTap }: Props) {
+  const leftRows = [
+    [KEYS[0], KEYS[1], KEYS[2]],
+    [KEYS[3], KEYS[4], KEYS[5]],
+    [KEYS[6], KEYS[7], KEYS[8]],
+  ];
   return (
-    <View style={styles.wrap}>
-      {rows.map((row, ri) => (
-        <View key={ri} style={styles.row}>
-          {row.map((m) => (
-            <FlickKey key={m.c} map={m} onChar={onChar} />
+    <View style={styles.kbRoot}>
+      <View style={{ flexDirection: 'row', gap: GAP }}>
+        {/* 左：かな3列 */}
+        <View style={{ flex: 3, gap: GAP }}>
+          {leftRows.map((row, ri) => (
+            <View key={ri} style={{ flexDirection: 'row', gap: GAP, height: KEY_H }}>
+              {row.map((m) => (
+                <FlickKey key={m.c} map={m} onChar={onChar} onTap={onTap} />
+              ))}
+            </View>
           ))}
+          {/* 4行目：ー / わ / スペーサ */}
+          <View style={{ flexDirection: 'row', gap: GAP, height: KEY_H }}>
+            <FuncKey variant="muted" label="ー" onPress={() => onChar('ー')} style={{ flex: 1 }} />
+            <FlickKey map={KEYS[9]} onChar={onChar} onTap={onTap} />
+            <View style={{ flex: 1 }} />
+          </View>
         </View>
-      ))}
-      <View style={styles.row}>
-        <FuncKey label="小゛゜" onPress={onCycle} />
-        <FlickKey map={KEYS[9]} onChar={onChar} />
-        <FuncKey label="⌫" onPress={onDelete} bg={COLORS.navy} color="#fff" />
+        {/* 右：削除 / 小゛゜ / こたえる（縦長） */}
+        <View style={{ flex: 1, gap: GAP }}>
+          <FuncKey variant="muted" onPress={onDelete} style={{ height: KEY_H }}>
+            <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke={COLORS.inkSoft} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M9 4 H20 a1.5 1.5 0 0 1 1.5 1.5 v13 A1.5 1.5 0 0 1 20 20 H9 L2.5 12 Z" />
+              <Path d="M12 9.5 L17 14.5 M17 9.5 L12 14.5" />
+            </Svg>
+          </FuncKey>
+          <FuncKey variant="muted" label="小" sub="゛ ゜" onPress={onCycle} style={{ height: KEY_H }} />
+          <FuncKey variant="submit" onPress={onSubmit} disabled={!canSubmit} style={{ flex: 1 }}>
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M4 13 L9 18 L20 6" />
+            </Svg>
+            <Text style={styles.submitLabel}>こたえる</Text>
+          </FuncKey>
+        </View>
       </View>
-      <SubmitKey onSubmit={onSubmit} />
     </View>
   );
 }
 
-const KEY_H = 52;
 const styles = StyleSheet.create({
-  wrap: { width: '100%', maxWidth: 440, alignSelf: 'center', paddingHorizontal: 8, paddingBottom: 10, gap: 7 },
-  row: { flexDirection: 'row', gap: 7 },
-  key: {
-    flex: 1,
-    height: KEY_H,
-    backgroundColor: COLORS.card,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
+  kbRoot: {
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    paddingHorizontal: 9,
+    paddingTop: 9,
+    paddingBottom: 10,
   },
-  keyPressed: { opacity: 0.72 },
-  keyLabel: { fontSize: 24, fontWeight: '700', fontFamily: FONTS.bold, color: COLORS.ink },
-  funcLabel: { fontSize: 18, fontWeight: '900', fontFamily: FONTS.black },
-  submit: {
-    height: KEY_H,
-    backgroundColor: COLORS.primary,
+  key: {
+    backgroundColor: COLORS.surface,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
+    shadowColor: COLORS.surfaceEdge,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  submitPressed: { opacity: 0.86 },
-  submitText: { color: '#fff', fontSize: 19, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 2 },
+  keyDown: { transform: [{ translateY: 4 }], shadowOpacity: 0, elevation: 0 },
+  keyDisabled: { opacity: 0.4 },
+  keyMain: { fontSize: 21, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.ink, lineHeight: 23 },
+  keySub: { fontSize: 8.5, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.inkSoft, letterSpacing: 2, marginTop: 1 },
+  funcMuted: { backgroundColor: COLORS.keyMuted },
+  funcMain: { fontSize: 17, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.ink },
+  submit: { backgroundColor: COLORS.primary },
+  submitLabel: { color: '#fff', fontSize: 14, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1, marginTop: 3 },
+  flickPopup: { position: 'absolute', left: '50%', top: '50%', width: 132, height: 132, marginLeft: -66, marginTop: -66, zIndex: 60 },
+  flickCell: { position: 'absolute', width: 44, height: 44, borderRadius: 13, backgroundColor: COLORS.ink, alignItems: 'center', justifyContent: 'center', opacity: 0.92 },
+  flickCellActive: { backgroundColor: COLORS.primary, opacity: 1, transform: [{ scale: 1.12 }] },
+  flickCellText: { fontSize: 21, fontWeight: '900', fontFamily: FONTS.black, color: 'rgba(255,255,255,0.85)' },
+  flickCellTextActive: { color: '#fff' },
 });

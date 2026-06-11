@@ -1,69 +1,77 @@
-import { StyleSheet, Text, View } from 'react-native';
+// 背景：空色グラデ ＋ ドリフトする雲 ＋ またたくキラキラ
+// （キャンディポップ・ズー デザイン）
+import { useEffect, useRef } from 'react';
+import { Animated, Dimensions, Easing, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path } from 'react-native-svg';
 import { COLORS } from './theme';
+import { useReducedMotion } from './motion';
 
-// 背景の紙吹雪・装飾レイヤー（固定位置・タップは透過）
-type Piece = {
-  top: string;
-  left: string;
-  color: string;
-  size: number;
-  rot: number;
-  kind: 'rect' | 'dot' | 'ring' | 'q' | 'star';
-};
+const WIN = Dimensions.get('window');
+const CLOUD = 'rgba(255,255,255,0.85)';
 
-const C = ['#FF8A4C', '#33C2B4', '#FFC23D', '#9B7EDE', '#FF8FB1', '#6BC5F5'];
-
-const PIECES: Piece[] = [
-  { top: '4%', left: '8%', color: C[3], size: 14, rot: 20, kind: 'q' },
-  { top: '6%', left: '86%', color: C[1], size: 14, rot: -15, kind: 'q' },
-  { top: '10%', left: '20%', color: C[2], size: 10, rot: 30, kind: 'rect' },
-  { top: '12%', left: '72%', color: C[0], size: 9, rot: -20, kind: 'rect' },
-  { top: '16%', left: '92%', color: C[4], size: 8, rot: 0, kind: 'dot' },
-  { top: '22%', left: '5%', color: C[1], size: 9, rot: 40, kind: 'rect' },
-  { top: '30%', left: '94%', color: C[2], size: 14, rot: 0, kind: 'star' },
-  { top: '34%', left: '3%', color: C[3], size: 10, rot: 0, kind: 'ring' },
-  { top: '44%', left: '90%', color: C[0], size: 9, rot: 25, kind: 'rect' },
-  { top: '52%', left: '6%', color: C[4], size: 8, rot: 0, kind: 'dot' },
-  { top: '60%', left: '93%', color: C[5], size: 9, rot: -30, kind: 'rect' },
-  { top: '64%', left: '4%', color: C[2], size: 12, rot: 0, kind: 'star' },
-  { top: '74%', left: '89%', color: C[3], size: 8, rot: 0, kind: 'dot' },
-  { top: '78%', left: '10%', color: C[0], size: 10, rot: 35, kind: 'rect' },
-  { top: '86%', left: '84%', color: C[1], size: 10, rot: 0, kind: 'ring' },
-  { top: '90%', left: '16%', color: C[4], size: 9, rot: -25, kind: 'rect' },
-];
-
-function Shape({ p }: { p: Piece }) {
-  const base = {
-    position: 'absolute' as const,
-    top: p.top as any,
-    left: p.left as any,
-    transform: [{ rotate: `${p.rot}deg` }],
-  };
-  if (p.kind === 'q') {
-    return <Text style={[base, { color: p.color, fontSize: p.size + 6, fontWeight: '900' }]}>?</Text>;
-  }
-  if (p.kind === 'star') {
-    return <Text style={[base, { color: p.color, fontSize: p.size + 4 }]}>✦</Text>;
-  }
-  if (p.kind === 'dot') {
-    return <View style={[base, { width: p.size, height: p.size, borderRadius: p.size / 2, backgroundColor: p.color }]} />;
-  }
-  if (p.kind === 'ring') {
-    return <View style={[base, { width: p.size, height: p.size, borderRadius: p.size / 2, borderWidth: 3, borderColor: p.color }]} />;
-  }
-  return <View style={[base, { width: p.size, height: p.size * 0.5, borderRadius: 2, backgroundColor: p.color }]} />;
-}
-
-export default function Decor() {
+function Cloud({ top, w, h, dur, delay, reduced }: { top: string; w: number; h: number; dur: number; delay: number; reduced: boolean }) {
+  const x = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (reduced) return;
+    const loop = Animated.loop(
+      Animated.timing(x, { toValue: 1, duration: dur * 1000, delay, easing: Easing.linear, useNativeDriver: false })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [reduced, x, dur, delay]);
+  const translateX = x.interpolate({ inputRange: [0, 1], outputRange: [-w - 40, WIN.width + 40] });
   return (
-    <View style={styles.layer}>
-      {PIECES.map((p, i) => (
-        <Shape key={i} p={p} />
-      ))}
-    </View>
+    <Animated.View style={{ position: 'absolute', top: top as any, left: 0, width: w, height: h, transform: [{ translateX }] }}>
+      <View style={{ position: 'absolute', bottom: 0, left: 0, width: w, height: h, borderRadius: 999, backgroundColor: CLOUD }} />
+      <View style={{ position: 'absolute', bottom: h * 0.18, left: w * 0.12, width: w * 0.55, height: h * 1.6, borderRadius: 999, backgroundColor: CLOUD }} />
+      <View style={{ position: 'absolute', bottom: h * 0.24, right: w * 0.12, width: w * 0.42, height: h * 1.2, borderRadius: 999, backgroundColor: CLOUD }} />
+    </Animated.View>
   );
 }
 
-const styles = StyleSheet.create({
-  layer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' },
-});
+function Spark({ top, left, right, s, delay, reduced }: { top: string; left?: string; right?: string; s: number; delay: number; reduced: boolean }) {
+  const a = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (reduced) {
+      a.setValue(0.6);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(a, { toValue: 1, duration: 1400, delay, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        Animated.timing(a, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [reduced, a, delay]);
+  const opacity = a.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.95] });
+  const scale = a.interpolate({ inputRange: [0, 1], outputRange: [0.55, 1] });
+  return (
+    <Animated.View style={{ position: 'absolute', top: top as any, left: left as any, right: right as any, opacity, transform: [{ scale }] }}>
+      <Svg width={s} height={s} viewBox="0 0 24 24">
+        <Path
+          d="M12 2 C 12.8 7.5 14.5 9.2 20 10 C 14.5 10.8 12.8 12.5 12 18 C 11.2 12.5 9.5 10.8 4 10 C 9.5 9.2 11.2 7.5 12 2 Z"
+          fill="rgba(255,255,255,0.92)"
+        />
+      </Svg>
+    </Animated.View>
+  );
+}
+
+export default function Decor() {
+  const reduced = useReducedMotion();
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LinearGradient colors={[COLORS.bgTop, COLORS.bgBottom]} locations={[0, 0.78]} style={StyleSheet.absoluteFill} />
+      <Cloud top="9%" w={110} h={30} dur={46} delay={0} reduced={reduced} />
+      <Cloud top="22%" w={80} h={24} dur={38} delay={4000} reduced={reduced} />
+      <Cloud top="48%" w={95} h={26} dur={52} delay={8000} reduced={reduced} />
+      <Spark top="13%" left="12%" s={14} delay={0} reduced={reduced} />
+      <Spark top="7%" right="18%" s={11} delay={1100} reduced={reduced} />
+      <Spark top="30%" right="8%" s={13} delay={600} reduced={reduced} />
+      <Spark top="40%" left="6%" s={10} delay={1800} reduced={reduced} />
+    </View>
+  );
+}

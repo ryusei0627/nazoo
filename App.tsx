@@ -22,7 +22,7 @@ import {
 import { QUESTIONS, DIFFICULTY_LABELS, Question } from './src/questions';
 import { isCorrect } from './src/matching';
 import { getHighScore, setHighScore, getMuted, setMuted } from './src/storage';
-import { COLORS, DIFFICULTY_COLORS, LOGO_COLORS, FONTS, GAME_CONFIG as G } from './src/theme';
+import { COLORS, DIFFICULTY_COLORS, DIFFICULTY_EDGES, DS, LOGO_COLORS, FONTS, GAME_CONFIG as G } from './src/theme';
 import FlickKeyboard from './src/FlickKeyboard';
 import { cycleKana } from './src/kana';
 import { sfx, setSfxEnabled } from './src/sfx';
@@ -30,6 +30,7 @@ import Decor from './src/Decor';
 import LottieFX from './src/Lottie';
 import AnimatedMascot, { AnimalKey, MascotMood } from './src/AnimatedMascot';
 import { MOTION, useReducedMotion } from './src/motion';
+import { CandyButton, StickerCard, CardTab, NzIcon, NzStar, PromoRays } from './src/ui';
 
 const CONFETTI = require('./assets/lottie/confetti.json');
 const LEVELUP = require('./assets/lottie/levelup.json');
@@ -37,11 +38,11 @@ const LEVELUP = require('./assets/lottie/levelup.json');
 // レベル（難易度1-4）ごとのマスコット動物 ＝「動物園コンプ」方式。
 // 進むほど新しい動物に会える。マスコットはSVG＋コードアニメ（AnimatedMascot）で自作。
 // 動物を増やす/絵を作り込むときは AnimatedMascot.tsx の ART に追加するだけ。
-const LEVEL_MASCOTS: Record<number, { animal: AnimalKey; name: string }> = {
-  1: { animal: 'penguin', name: 'ペンギン' },
-  2: { animal: 'monkey', name: 'さる' },
-  3: { animal: 'elephant', name: 'ぞう' },
-  4: { animal: 'lion', name: 'ライオン' },
+const LEVEL_MASCOTS: Record<number, { animal: AnimalKey; name: string; species: string }> = {
+  1: { animal: 'chick', name: 'ぴよ', species: 'ヒヨコ' },
+  2: { animal: 'rabbit', name: 'みみ', species: 'ウサギ' },
+  3: { animal: 'panda', name: 'らんらん', species: 'パンダ' },
+  4: { animal: 'owl', name: 'はかせ', species: 'フクロウ' },
 };
 const WIN = Dimensions.get('window');
 
@@ -137,7 +138,7 @@ function MuteButton({ muted, onPress, reducedMotion }: { muted: boolean; onPress
   return (
     <Pressable onPress={onPress} onPressIn={runPressIn} onPressOut={runPressOut} style={styles.muteBtn} hitSlop={10}>
       <Animated.View style={{ transform: [{ scale }, { rotate }] }}>
-        <IconImage source={muted ? ICON_SOUND_OFF : ICON_SOUND_ON} size={30} />
+        <NzIcon name={muted ? 'soundOff' : 'soundOn'} size={22} color={COLORS.ink} />
       </Animated.View>
     </Pressable>
   );
@@ -279,68 +280,130 @@ function OneShot({
 }
 
 // ───────────────────────── ホーム ─────────────────────────
+const hs = StyleSheet.create({
+  scroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingTop: 64, paddingBottom: 40, gap: 16 },
+  logoRow: { flexDirection: 'row', alignItems: 'flex-end' },
+  logoLetter: { fontSize: 64, fontWeight: '900', fontFamily: FONTS.black, lineHeight: 66, letterSpacing: -2, textShadowColor: 'rgba(255,255,255,0.9)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 2 },
+  ribbon: { transform: [{ rotate: '-2deg' }], backgroundColor: COLORS.ink, paddingHorizontal: 20, paddingVertical: 6, borderRadius: 999 },
+  ribbonText: { color: '#fff', fontSize: 13, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 3 },
+  parade: { flexDirection: 'row', alignItems: 'flex-end', gap: 2 },
+  paradeSlot: { alignItems: 'center', gap: 1 },
+  paradeName: { fontSize: 10, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.inkSoft },
+  rulesCard: { paddingHorizontal: 18, paddingTop: 26, paddingBottom: 16, gap: 11 },
+  ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  ruleIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center', shadowColor: '#3D3A50', shadowOpacity: 0.14, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  ruleTitle: { fontSize: 14.5, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.ink, lineHeight: 19 },
+  ruleSub: { fontSize: 11, fontWeight: '700', fontFamily: FONTS.bold, color: COLORS.inkSoft, marginTop: 1 },
+  highPill: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.92)', borderRadius: 999, paddingHorizontal: 22, paddingVertical: 9, shadowColor: '#3D3A50', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 6 }, elevation: 2 },
+  highLabel: { fontSize: 13, color: COLORS.inkSoft, fontWeight: '800', fontFamily: FONTS.exbold },
+  highValue: { fontSize: 22, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.primary },
+  highUnit: { fontSize: 13, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.primary },
+  startText: { color: '#fff', fontSize: 21, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1 },
+});
+
 function HomeScreen({ highScore, onStart }: { highScore: number; onStart: () => void }) {
-  const reducedMotion = useReducedMotion();
-  const rules: { icon: number; color: string; title: React.ReactNode; sub: string }[] = [
-    { icon: ICON_TIMER, color: COLORS.teal, title: '時間内に こたえよう！', sub: '制限時間がなくなるとゲームオーバー！' },
-    { icon: ICON_INPUT, color: COLORS.pink, title: 'ひらがなで こたえを入力！', sub: 'なぞなぞをよく読んで考えよう！' },
-    { icon: ICON_BONUS_TIME, color: COLORS.yellow, title: <>正解すると <Text style={{ color: COLORS.primary }}>+{G.correctBonus}秒</Text>！</>, sub: 'どんどん時間がふえるよ！' },
-    { icon: ICON_LEVEL_UP, color: COLORS.purple, title: `${G.levelUpEvery}問ごとに難易度アップ！`, sub: 'よりむずかしい なぞなぞが出題！' },
+  const rules: { icon: string; color: string; title: React.ReactNode; sub: string }[] = [
+    { icon: 'clock', color: COLORS.teal, title: 'じかんないに こたえよう！', sub: '0びょうになったら ゲームオーバー' },
+    { icon: 'pencil', color: COLORS.primary, title: 'ひらがなで こたえてね！', sub: 'フリックでも タップでも OK' },
+    { icon: 'plus', color: COLORS.yellow, title: <>せいかいで <Text style={{ color: COLORS.primary }}>+{G.correctBonus}びょう</Text> ゲット！</>, sub: 'どんどん きろくを のばそう' },
+    { icon: 'bolt', color: COLORS.purple, title: `${G.levelUpEvery}もんごとに なかまが ふえる！`, sub: 'なぞなぞも むずかしくなるよ' },
   ];
 
   return (
-    <ScrollView contentContainerStyle={styles.homeScroll}>
-      <MountMotion style={styles.heroStage}>
-        <AnimatedMascot animal="penguin" size={170} mood="happy" reactionKey={reducedMotion ? 0 : 1} />
-      </MountMotion>
-
-      <MountMotion delay={90} style={styles.logoBlock}>
-        <View style={styles.logoRow}>
+    <ScrollView contentContainerStyle={hs.scroll}>
+      <MountMotion style={{ alignItems: 'center', gap: 10 }}>
+        <View style={hs.logoRow}>
           {'Nazoo'.split('').map((ch, i) => (
-            <Text key={i} style={[styles.logoLetter, { color: LOGO_COLORS[i] }]}>
+            <Text key={i} style={[hs.logoLetter, { color: LOGO_COLORS[i] }]}>
               {ch}
             </Text>
           ))}
         </View>
-        <Ribbon label="エンドレスなぞなぞ" color={COLORS.primary} tail={COLORS.primaryDark} />
-      </MountMotion>
-
-      <MountMotion delay={160} style={{ width: '100%', alignItems: 'center' }}>
-        <View style={styles.howCard}>
-          <View style={styles.howTab}>
-            <Text style={styles.howTabText}>あそびかた</Text>
-          </View>
-          {rules.map((r, i) => (
-            <View key={i} style={styles.ruleRow}>
-              <View style={[styles.ruleIcon, { backgroundColor: r.color }]}>
-                <IconImage source={r.icon} size={31} style={styles.ruleIconImage} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.ruleTitle}>{r.title}</Text>
-                <Text style={styles.ruleSub}>{r.sub}</Text>
-              </View>
-            </View>
-          ))}
+        <View style={hs.ribbon}>
+          <Text style={hs.ribbonText}>エンドレスなぞなぞ</Text>
         </View>
       </MountMotion>
 
+      <MountMotion delay={90} style={hs.parade}>
+        {[1, 2, 3, 4].map((lv) => (
+          <View key={lv} style={hs.paradeSlot}>
+            <AnimatedMascot animal={LEVEL_MASCOTS[lv].animal} size={lv === 1 ? 86 : 74} mood="idle" />
+            <Text style={hs.paradeName}>{LEVEL_MASCOTS[lv].name}</Text>
+          </View>
+        ))}
+      </MountMotion>
+
+      <MountMotion delay={160} style={{ width: '100%', alignItems: 'center' }}>
+        <StickerCard style={hs.rulesCard}>
+          <CardTab label="あそびかた" color={COLORS.teal} />
+          {rules.map((r, i) => (
+            <View key={i} style={hs.ruleRow}>
+              <View style={[hs.ruleIcon, { backgroundColor: r.color }]}>
+                <NzIcon name={r.icon} size={22} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={hs.ruleTitle}>{r.title}</Text>
+                <Text style={hs.ruleSub}>{r.sub}</Text>
+              </View>
+            </View>
+          ))}
+        </StickerCard>
+      </MountMotion>
+
       <MountMotion delay={230}>
-        <View style={styles.highPill}>
-          <IconImage source={ICON_CROWN} size={28} style={styles.highIcon} />
-          <Text style={styles.highLabel}>ハイスコア</Text>
-          <Text style={styles.highValue}>{highScore}</Text>
-          <Text style={styles.highUnit}>問</Text>
+        <View style={hs.highPill}>
+          <NzIcon name="crown" size={22} color={COLORS.yellow} />
+          <Text style={hs.highLabel}>ハイスコア</Text>
+          <Text style={hs.highValue}>{highScore}</Text>
+          <Text style={hs.highUnit}>もん</Text>
         </View>
       </MountMotion>
 
       <MountMotion delay={290} style={{ width: '100%', alignItems: 'center' }}>
-        <BigButton label="スタート" icon={ICON_PLAY} color={COLORS.primary} onPress={onStart} />
+        <CandyButton onPress={onStart} style={{ width: '100%' }}>
+          <NzIcon name="play" size={22} color="#fff" />
+          <Text style={hs.startText}>スタート！</Text>
+        </CandyButton>
       </MountMotion>
     </ScrollView>
   );
 }
 
 // ───────────────────────── ゲーム ─────────────────────────
+const gs = StyleSheet.create({
+  hudRow: { flexDirection: 'row', alignItems: 'stretch', gap: 8 },
+  chip: { flex: 1, backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingVertical: 7, shadowColor: COLORS.surfaceEdge, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  chipLabel: { fontSize: 10, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.inkSoft, letterSpacing: 1 },
+  chipValue: { fontSize: 19, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.ink, lineHeight: 23 },
+  chipUnit: { fontSize: 9.5, fontWeight: '900', fontFamily: FONTS.black },
+  level: { flex: 1.25, borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingVertical: 6, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  levelLv: { fontSize: 10, fontWeight: '900', fontFamily: FONTS.black, color: '#fff', opacity: 0.9, letterSpacing: 1 },
+  levelName: { fontSize: 13.5, fontWeight: '900', fontFamily: FONTS.black, color: '#fff', lineHeight: 16 },
+  stars: { flexDirection: 'row', gap: 2, marginTop: 2 },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  barTrack: { flex: 1, height: 18, backgroundColor: 'rgba(255,255,255,0.85)', borderRadius: 999, overflow: 'hidden' },
+  barFill: { height: '100%', borderRadius: 999 },
+  qCard: { paddingHorizontal: 20, paddingTop: 26, paddingBottom: 22, minHeight: 148, justifyContent: 'center', gap: 10 },
+  qBadge: { position: 'absolute', top: -13, left: 16, zIndex: 2, backgroundColor: COLORS.purple, paddingHorizontal: 13, paddingVertical: 4, borderRadius: 999, transform: [{ rotate: '-2deg' }], shadowColor: COLORS.purpleDark, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  qBadgeText: { color: '#fff', fontSize: 12, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1 },
+  qText: { fontSize: 19, lineHeight: 29, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.ink, textAlign: 'center' },
+  peek: { position: 'absolute', right: -2, bottom: -16 },
+  hintBubble: { marginHorizontal: 4, backgroundColor: '#FFF6D8', borderWidth: 2, borderColor: '#F2CF6B', borderStyle: 'dashed', borderRadius: 14, paddingHorizontal: 13, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  hintText: { color: '#8A6200', fontSize: 13.5, fontWeight: '800', fontFamily: FONTS.exbold, flex: 1 },
+  answerBlock: { alignItems: 'center', gap: 3 },
+  answerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, minHeight: 48, flexWrap: 'wrap' },
+  tile: { width: 38, height: 46, backgroundColor: COLORS.surface, borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: COLORS.surfaceEdge, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  tileGhost: { backgroundColor: 'rgba(255,255,255,0.45)', shadowOpacity: 0 },
+  tileText: { fontSize: 23, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.ink },
+  caret: { width: 3, height: 30, borderRadius: 2, backgroundColor: COLORS.primary },
+  answerCaption: { fontSize: 11, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.inkSoft, letterSpacing: 1.5 },
+  subRow: { flexDirection: 'row', gap: 9 },
+  subText: { fontSize: 13, fontWeight: '900', fontFamily: FONTS.black },
+  hintBadge: { backgroundColor: 'rgba(0,0,0,0.22)', borderRadius: 999, minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  hintBadgeText: { color: '#fff', fontSize: 12, fontWeight: '900', fontFamily: FONTS.black },
+  skipPenalty: { fontSize: 10, fontWeight: '900', fontFamily: FONTS.black, color: '#fff', opacity: 0.85 },
+});
+
 function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => void }) {
   const reducedMotion = useReducedMotion();
   const [, force] = useState(0);
@@ -353,6 +416,11 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
   const queuesRef = useRef<Record<number, Question[]>>({ 1: [], 2: [], 3: [], 4: [] });
   const currentRef = useRef<Question | null>(null);
   const endedRef = useRef(false);
+  // 出題切替の遷移中フラグ。正解/スキップ後 drawNext までの間の二重発火（連打）で
+  // 同じ問題が重複記録/重複加点されるのを防ぐ。
+  const lockRef = useRef(false);
+  // 昇格演出中はタイマーを止める（演出ぶんの時間ロスをなくす）
+  const pausedRef = useRef(false);
 
   const [input, setInput] = useState('');
   const [showHint, setShowHint] = useState(false);
@@ -362,6 +430,8 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
   const [questionKey, setQuestionKey] = useState(0);
   const [mascotMood, setMascotMood] = useState<MascotMood>('thinking');
   const [mascotReaction, setMascotReaction] = useState(0);
+  // 昇格演出（新しい動物が仲間入り）を出す難易度。null＝非表示
+  const [promoD, setPromoD] = useState<number | null>(null);
 
   const shake = useRef(new Animated.Value(0)).current;
   const pop = useRef(new Animated.Value(1)).current;
@@ -375,6 +445,7 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
     const d = currentDifficulty();
     if (queuesRef.current[d].length === 0) queuesRef.current[d] = shuffle(POOLS[d]);
     currentRef.current = queuesRef.current[d].shift() || null;
+    lockRef.current = false; // 次の問題が出たので入力受付を再開
     setShowHint(false);
     setInput('');
     setQuestionKey((k) => k + 1);
@@ -423,6 +494,7 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
     drawNext();
     rerender();
     const id = setInterval(() => {
+      if (pausedRef.current) return; // 昇格演出中は時間を止める
       timeRef.current = Math.max(0, timeRef.current - 0.1);
       if (timeRef.current <= 0 && !endedRef.current) {
         endedRef.current = true;
@@ -456,15 +528,20 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
   };
 
   const doCorrect = () => {
+    lockRef.current = true; // 切替アニメ中の二重発火を止める
+    const prevD = currentDifficulty();
     timeRef.current += G.correctBonus;
     solvedRef.current += 1;
     sfx.correct();
     setBurst((b) => b + 1);
-    const leveledUp = solvedRef.current % G.levelUpEvery === 0;
+    const newD = currentDifficulty();
+    const leveledUp = newD > prevD; // 実際に難易度が上がった時だけ（Lv4到達後の頭打ちは除く）
     setMascotMood(leveledUp ? 'celebrate' : 'happy');
     setMascotReaction((k) => k + 1);
-    if (solvedRef.current % G.levelUpEvery === 0) {
+    if (leveledUp) {
       setLevelKey((k) => k + 1);
+      setPromoD(newD); // 新しい動物の登場演出
+      pausedRef.current = true; // 演出中はタイマー停止
       setTimeout(() => sfx.levelup(), 260);
     }
     flashFeedback('correct', G.correctBonus);
@@ -497,7 +574,7 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
 
   const submit = () => {
     const q = currentRef.current;
-    if (!q || endedRef.current) return;
+    if (!q || endedRef.current || lockRef.current) return;
     if (input.trim().length === 0) return;
     if (isCorrect(input, q.accept, q.answer)) doCorrect();
     else doWrong();
@@ -505,7 +582,8 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
 
   const skip = () => {
     const q = currentRef.current;
-    if (!q || endedRef.current) return;
+    if (!q || endedRef.current || lockRef.current) return;
+    lockRef.current = true; // 切替アニメ中の二重スキップを止める
     wrongsRef.current.push({ text: q.text, answer: q.answer });
     timeRef.current = Math.max(0, timeRef.current - G.skipPenalty);
     sfx.wrong();
@@ -547,6 +625,9 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
   const lowTime = timeRef.current <= 5;
   const dColor = DIFFICULTY_COLORS[d];
   const mascot = LEVEL_MASCOTS[d];
+  // こたえタイルのゴースト数（読みの文字数ヒント・最大8）
+  const answerLen = Math.min(8, ((q?.accept && q.accept[0]) || q?.answer || '').length);
+  const ghosts = Math.max(0, answerLen - input.length);
   const qTranslateY = questionIntro.interpolate({ inputRange: [0, 1], outputRange: [12, 0] });
   const qScale = questionIntro.interpolate({ inputRange: [0, 1], outputRange: [0.98, 1] });
   const hintTranslateY = hintIntro.interpolate({ inputRange: [0, 1], outputRange: [-6, 0] });
@@ -556,104 +637,104 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
     <View style={styles.gameRoot}>
       <View style={styles.gameTop}>
         {/* HUD */}
-        <View style={styles.hud}>
-          <View style={styles.hudCard}>
-            <View style={[styles.hudTab, { backgroundColor: COLORS.primary }]}>
-              <Text style={styles.hudTabText}>正解</Text>
-            </View>
-            <Text style={styles.hudValue}>
+        <View style={gs.hudRow}>
+          <View style={gs.chip}>
+            <Text style={gs.chipLabel}>せいかい</Text>
+            <Text style={gs.chipValue} numberOfLines={1}>
               {solvedRef.current}
-              <Text style={styles.hudUnit}>問</Text>
+              <Text style={gs.chipUnit}> もん</Text>
             </Text>
           </View>
-
-          <View style={[styles.hudLevel, { backgroundColor: dColor }]}>
-            <Text style={styles.hudLevelText}>Lv.{d} {DIFFICULTY_LABELS[d]}</Text>
-            <Stars d={d} />
-            {levelKey > 0 && (
-              <OneShot key={'lv' + levelKey} source={LEVELUP} width={130} height={130} style={styles.levelupBadge} ms={2200} disabled={reducedMotion} />
-            )}
-          </View>
-
-          <View style={styles.hudCard}>
-            <View style={[styles.hudTab, { backgroundColor: COLORS.yellow }]}>
-              <Text style={[styles.hudTabText, { color: '#7A5A00' }]}>のこり時間</Text>
+          <View style={[gs.level, { backgroundColor: dColor, shadowColor: DIFFICULTY_EDGES[d] }]}>
+            <Text style={gs.levelLv}>LV.{d}</Text>
+            <Text style={gs.levelName}>{DIFFICULTY_LABELS[d]}</Text>
+            <View style={gs.stars}>
+              {[1, 2, 3, 4].map((i) => (
+                <NzStar key={i} size={10} filled={i <= d} />
+              ))}
             </View>
-            <Text style={[styles.hudValue, lowTime && { color: COLORS.danger }]}>
-              {timeRef.current.toFixed(1)}
-              <Text style={styles.hudUnit}>秒</Text>
+          </View>
+          <View style={gs.chip}>
+            <Text style={gs.chipLabel}>のこり</Text>
+            <Text style={[gs.chipValue, lowTime && { color: COLORS.danger }]} numberOfLines={1}>
+              {Math.ceil(timeRef.current)}
+              <Text style={gs.chipUnit}> びょう</Text>
             </Text>
           </View>
         </View>
 
         {/* 時間バー */}
-        <View style={styles.barRow}>
-          <IconImage source={ICON_TIMER} size={22} />
-          <View style={styles.barTrack}>
-            <View style={[styles.barFill, { width: `${barPct * 100}%`, backgroundColor: lowTime ? COLORS.danger : COLORS.teal }]} />
+        <View style={gs.barRow}>
+          <NzIcon name="clock" size={22} color={COLORS.ink} />
+          <View style={gs.barTrack}>
+            <View style={[gs.barFill, { width: `${barPct * 100}%`, backgroundColor: lowTime ? COLORS.danger : COLORS.teal }]} />
           </View>
         </View>
 
         {/* 問題カード */}
         <Animated.View
-          style={[
-            styles.qCard,
-            {
-              opacity: questionIntro,
-              transform: [
-                { scale: pop },
-                { scale: qScale },
-                { translateX: shake.interpolate({ inputRange: [-1, 1], outputRange: [-8, 8] }) },
-                { translateY: qTranslateY },
-              ],
-            },
-          ]}
+          style={{
+            opacity: questionIntro,
+            transform: [
+              { scale: pop },
+              { scale: qScale },
+              { translateX: shake.interpolate({ inputRange: [-1, 1], outputRange: [-8, 8] }) },
+              { translateY: qTranslateY },
+            ],
+          }}
         >
-          <View style={styles.qBadge}>
-            <Text style={styles.qBadgeText}>Q</Text>
-          </View>
-          <Text style={styles.qText}>{q?.text}</Text>
-          {showHint && q && (
-            <Animated.View style={[styles.hintBox, { opacity: hintIntro, transform: [{ translateY: hintTranslateY }] }]}>
-              <View style={styles.hintContent}>
-                <IconImage source={ICON_HINT} size={22} />
-                <Text style={styles.hintText}>{q.hint}</Text>
-              </View>
-            </Animated.View>
-          )}
-          <View style={[styles.peekMascot, styles.noPointerEvents]}>
-            <AnimatedMascot animal={mascot.animal} size={72} mood={mascotMood} reactionKey={mascotReaction} />
-          </View>
+          <StickerCard style={gs.qCard}>
+            <View style={gs.qBadge}>
+              <Text style={gs.qBadgeText}>Q{solvedRef.current + 1}</Text>
+            </View>
+            <Text style={gs.qText}>{q?.text}</Text>
+            {showHint && q && (
+              <Animated.View style={[gs.hintBubble, { opacity: hintIntro, transform: [{ translateY: hintTranslateY }] }]}>
+                <NzIcon name="bulb" size={20} color={COLORS.yellow} />
+                <Text style={gs.hintText}>{q.hint}</Text>
+              </Animated.View>
+            )}
+            <View style={[gs.peek, styles.noPointerEvents]}>
+              <AnimatedMascot animal={mascot.animal} size={72} mood={mascotMood} reactionKey={mascotReaction} />
+            </View>
+          </StickerCard>
         </Animated.View>
 
-        {/* 入力表示 */}
-        <View style={styles.inputBox}>
-          {input.length > 0 ? <Text style={styles.inputText}>{input}</Text> : <Text style={styles.inputPlaceholder}>ひらがなで こたえてね</Text>}
-          <Caret />
+        {/* こたえタイル */}
+        <View style={gs.answerBlock}>
+          <View style={gs.answerRow}>
+            {input.split('').map((ch, i) => (
+              <View key={i + ch} style={gs.tile}>
+                <Text style={gs.tileText}>{ch}</Text>
+              </View>
+            ))}
+            <View style={gs.caret} />
+            {Array.from({ length: ghosts }).map((_, i) => (
+              <View key={'g' + i} style={[gs.tile, gs.tileGhost]} />
+            ))}
+          </View>
+          {input.length === 0 && <Text style={gs.answerCaption}>ひらがなで こたえてね</Text>}
         </View>
 
         {/* 補助ボタン */}
-        <View style={styles.subRow}>
-          <Pressable
-            style={({ pressed }) => [styles.hintBtn, pressed && !reducedMotion && styles.subBtnPressed, (hintsRef.current <= 0 || showHint) && styles.subBtnDisabled]}
-            onPress={useHint}
-          >
-            <IconImage source={ICON_HINT} size={24} style={styles.subBtnIcon} />
-            <Text style={styles.hintBtnText}>ヒント</Text>
-            <View style={styles.hintCount}>
-              <Text style={styles.hintCountText}>{hintsRef.current}</Text>
+        <View style={gs.subRow}>
+          <CandyButton color={COLORS.yellow} edge={COLORS.yellowDark} height={48} radius={14} gap={7} onPress={useHint} disabled={hintsRef.current <= 0 || showHint} style={{ flex: 1 }}>
+            <NzIcon name="bulb" size={20} color={COLORS.sunInk} />
+            <Text style={[gs.subText, { color: COLORS.sunInk }]} numberOfLines={1}>ヒント</Text>
+            <View style={gs.hintBadge}>
+              <Text style={gs.hintBadgeText}>{hintsRef.current}</Text>
             </View>
-          </Pressable>
-          <Pressable style={({ pressed }) => [styles.skipBtn, pressed && !reducedMotion && styles.subBtnPressed]} onPress={skip}>
-            <IconImage source={ICON_SKIP} size={24} style={styles.subBtnIcon} />
-            <Text style={styles.skipBtnText}>スキップ</Text>
-            <Text style={styles.skipPenaltyText}>−{G.skipPenalty}秒</Text>
-          </Pressable>
+          </CandyButton>
+          <CandyButton color={COLORS.purple} edge={COLORS.purpleDark} height={48} radius={14} gap={6} onPress={skip} style={{ flex: 1 }}>
+            <NzIcon name="skip" size={18} color="#fff" />
+            <Text style={gs.subText} numberOfLines={1}>スキップ</Text>
+            <Text style={gs.skipPenalty} numberOfLines={1}>−{G.skipPenalty}びょう</Text>
+          </CandyButton>
         </View>
       </View>
 
       {/* キーボード */}
-      <FlickKeyboard onChar={pressKey} onCycle={onCycle} onDelete={onDel} onSubmit={submit} />
+      <FlickKeyboard onChar={pressKey} onCycle={onCycle} onDelete={onDel} onSubmit={submit} canSubmit={input.trim().length > 0} />
 
       {/* フィードバック（吹き出し風） */}
       {feedback && (
@@ -670,9 +751,16 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
             },
           ]}
         >
-          <View style={[styles.fbBubble, { backgroundColor: feedback.kind === 'correct' ? COLORS.success : COLORS.danger }]}>
-            <Text style={styles.fbText}>{feedback.kind === 'correct' ? 'せいかい！' : 'ざんねん…'}</Text>
-            <Text style={styles.fbDelta}>{feedback.delta > 0 ? `+${feedback.delta}` : feedback.delta}秒</Text>
+          <Text style={[styles.fbWord, { color: feedback.kind === 'correct' ? COLORS.teal : COLORS.danger }]}>
+            {feedback.kind === 'correct' ? 'せいかい！' : 'ざんねん…'}
+          </Text>
+          <View
+            style={[
+              styles.fbPill,
+              { backgroundColor: feedback.kind === 'correct' ? COLORS.teal : COLORS.danger, shadowColor: feedback.kind === 'correct' ? COLORS.tealDark : COLORS.dangerDark },
+            ]}
+          >
+            <Text style={styles.fbPillText}>{feedback.delta > 0 ? `+${feedback.delta}` : feedback.delta} びょう</Text>
           </View>
         </Animated.View>
       )}
@@ -681,7 +769,62 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
       {burst > 0 && (
         <OneShot key={'c' + burst} source={CONFETTI} width={WIN.width} height={WIN.height} style={styles.confettiLayer} ms={5200} disabled={reducedMotion} />
       )}
+
+      {/* 昇格演出：新しい動物が仲間入り */}
+      {promoD !== null && (
+        <LevelUpPromo
+          d={promoD}
+          reducedMotion={reducedMotion}
+          onDone={() => {
+            setPromoD(null);
+            pausedRef.current = false;
+          }}
+        />
+      )}
     </View>
+  );
+}
+
+// 昇格演出オーバーレイ（新しい動物の登場をでかく見せる）
+function LevelUpPromo({ d, onDone, reducedMotion }: { d: number; onDone: () => void; reducedMotion: boolean }) {
+  const a = useRef(new Animated.Value(0)).current;
+  const m = LEVEL_MASCOTS[d];
+
+  useEffect(() => {
+    if (reducedMotion) {
+      a.setValue(1);
+      const t = setTimeout(onDone, 900);
+      return () => clearTimeout(t);
+    }
+    const anim = Animated.sequence([
+      Animated.spring(a, { toValue: 1, friction: 6, tension: 120, useNativeDriver: false }),
+      Animated.delay(1100),
+      Animated.timing(a, { toValue: 0, duration: 280, easing: MOTION.easeOut, useNativeDriver: false }),
+    ]);
+    anim.start(({ finished }) => {
+      if (finished) onDone();
+    });
+    return () => anim.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const scale = a.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
+
+  return (
+    <Animated.View pointerEvents="none" style={[styles.promoOverlay, { opacity: a }]}>
+      <Animated.View style={[styles.promoCard, { transform: [{ scale }] }]}>
+        <PromoRays reduced={reducedMotion} />
+        <Text style={styles.promoEyebrow}>LEVEL UP!</Text>
+        <Text style={styles.promoTitle}>あたらしい なかま！</Text>
+        <AnimatedMascot animal={m.animal} size={130} mood="celebrate" reactionKey={d} />
+        <View style={[styles.promoBadge, { backgroundColor: DIFFICULTY_COLORS[d], shadowColor: DIFFICULTY_EDGES[d] }]}>
+          <Text style={styles.promoBadgeText}>LV.{d} {DIFFICULTY_LABELS[d]}</Text>
+        </View>
+        <Text style={styles.promoName}>
+          <Text style={{ color: COLORS.primary }}>{m.name}</Text>（{m.species}）が おうえんに きたよ！
+        </Text>
+      </Animated.View>
+    </Animated.View>
   );
 }
 
@@ -739,67 +882,99 @@ function ResultScreen({
   const reachedD = Math.min(4, Math.floor(result.score / G.levelUpEvery) + 1);
   const mascot = LEVEL_MASCOTS[reachedD];
   const resultMood: MascotMood = result.isNewRecord ? 'celebrate' : result.score > 0 ? 'happy' : 'tired';
+  const titleColor = result.isNewRecord ? COLORS.yellow : COLORS.primary;
 
   return (
     <View style={{ flex: 1, width: '100%' }}>
       {result.isNewRecord && (
         <OneShot key="rconf" source={CONFETTI} width={WIN.width} height={WIN.height} style={styles.confettiLayer} ms={5200} disabled={reducedMotion} />
       )}
-      <ScrollView contentContainerStyle={styles.resultScroll}>
-        <Animated.View style={{ transform: [{ scale: pop }], alignItems: 'center', width: '100%' }}>
-          <Text style={styles.resultTitle}>{result.isNewRecord ? '新記録！' : 'おつかれさま！'}</Text>
+      <ScrollView contentContainerStyle={rs.scroll}>
+        <Animated.View style={{ transform: [{ scale: pop }], alignItems: 'center' }}>
+          <Text style={[rs.title, { color: titleColor }]}>{result.isNewRecord ? 'しんきろく！' : 'おつかれさま！'}</Text>
         </Animated.View>
 
-        <Animated.View style={{ opacity: pop, alignItems: 'center', width: '100%' }}>
-          <AnimatedMascot animal={mascot.animal} size={160} mood={resultMood} reactionKey={1} />
+        <Animated.View style={{ opacity: pop, alignItems: 'center' }}>
+          <AnimatedMascot animal={mascot.animal} size={150} mood={resultMood} reactionKey={1} />
         </Animated.View>
 
-        <Animated.View style={{ transform: [{ scale: pop }], alignItems: 'center', width: '100%' }}>
-          <View style={styles.resultScoreCard}>
-            <Ribbon label="正解数" color={COLORS.primary} tail={COLORS.primaryDark} />
-            <View style={styles.scoreRow}>
-              <IconImage source={ICON_LAUREL} size={38} style={styles.scoreLaurel} />
-              <Text style={styles.resultScore}>
+        <Animated.View style={{ transform: [{ scale: pop }], width: '100%', alignItems: 'center' }}>
+          <StickerCard style={rs.scoreCard}>
+            {result.isNewRecord && (
+              <View style={rs.newRecordTag}>
+                <Text style={rs.newRecordText}>NEW RECORD</Text>
+              </View>
+            )}
+            <CardTab label="せいかいすう" color={COLORS.primary} />
+            <View style={rs.scoreRow}>
+              <NzIcon name="crown" size={30} color={COLORS.yellow} />
+              <Text style={rs.score}>
                 {shownScore}
-                <Text style={styles.resultScoreUnit}>問</Text>
+                <Text style={rs.scoreUnit}> もん</Text>
               </Text>
-              <IconImage source={ICON_LAUREL} size={38} style={[styles.scoreLaurel, { transform: [{ scaleX: -1 }] }]} />
+              <View style={{ transform: [{ scaleX: -1 }] }}>
+                <NzIcon name="crown" size={30} color={COLORS.yellow} />
+              </View>
             </View>
-            <View style={styles.resultHighRow}>
-              <IconImage source={ICON_CROWN} size={24} style={styles.resultHighIcon} />
-              <Text style={styles.resultHigh}>ハイスコア {Math.max(highScore, result.score)}問</Text>
+            <View style={rs.highRow}>
+              <NzIcon name="crown" size={16} color={COLORS.inkSoft} />
+              <Text style={rs.high}>ハイスコア {Math.max(highScore, result.score)} もん</Text>
             </View>
-          </View>
+          </StickerCard>
         </Animated.View>
 
         {result.wrongs.length > 0 && (
-          <View style={styles.reviewBox}>
-            <Ribbon label="ふりかえり" color={COLORS.purple} tail="#7B5FC0" />
-            <View style={styles.reviewTagRow}>
-              <View style={styles.reviewTag}>
-                <Text style={styles.reviewTagText}>スキップした問題（{result.wrongs.length}問）</Text>
-              </View>
-            </View>
+          <StickerCard style={rs.reviewCard}>
+            <CardTab label={`ふりかえり（${result.wrongs.length}もん）`} color={COLORS.purple} />
             {result.wrongs.map((w, i) => (
-              <View key={i} style={[styles.reviewItem, i > 0 && styles.reviewItemDivider]}>
-                <Text style={styles.reviewQ}>{w.text}</Text>
-                <Text style={styles.reviewA}>
-                  こたえ：<Text style={{ color: COLORS.primary }}>{w.answer}</Text>
+              <View key={i} style={[rs.reviewItem, i > 0 && rs.reviewDivider]}>
+                <Text style={rs.reviewQ}>{w.text}</Text>
+                <Text style={rs.reviewA}>
+                  <Text style={rs.reviewALabel}>こたえ </Text>
+                  <Text style={{ color: COLORS.primary }}>{w.answer}</Text>
                 </Text>
               </View>
             ))}
-          </View>
+          </StickerCard>
         )}
 
-        <BigButton label="もう一度あそぶ" icon={ICON_RETRY} color={COLORS.primary} onPress={onRetry} />
-        <BigButton label="結果をシェア" icon={ICON_SHARE} color={COLORS.teal} onPress={shareResult} />
-        <Pressable onPress={onHome} style={styles.homeLink}>
-          <Text style={styles.homeLinkText}>ホームへもどる</Text>
+        <CandyButton onPress={onRetry} style={{ width: '100%' }}>
+          <NzIcon name="retry" size={20} color="#fff" />
+          <Text style={rs.btnText}>もういちど あそぶ</Text>
+        </CandyButton>
+        <CandyButton color={COLORS.teal} edge={COLORS.tealDark} height={52} onPress={shareResult} style={{ width: '100%' }}>
+          <NzIcon name="share" size={19} color="#fff" />
+          <Text style={rs.btnText}>けっかを シェア</Text>
+        </CandyButton>
+        <Pressable onPress={onHome} style={rs.homeLink}>
+          <Text style={rs.homeLinkText}>ホームへ もどる</Text>
         </Pressable>
       </ScrollView>
     </View>
   );
 }
+
+const rs = StyleSheet.create({
+  scroll: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 22, paddingTop: 60, paddingBottom: 36, gap: 15 },
+  title: { fontSize: 30, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1, textShadowColor: '#fff', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 5 },
+  scoreCard: { paddingHorizontal: 20, paddingTop: 30, paddingBottom: 20, alignItems: 'center', gap: 4 },
+  newRecordTag: { position: 'absolute', top: -12, right: 14, zIndex: 3, transform: [{ rotate: '6deg' }], backgroundColor: COLORS.yellow, paddingHorizontal: 13, paddingVertical: 5, borderRadius: 999, shadowColor: COLORS.yellowDark, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  newRecordText: { color: COLORS.sunInk, fontSize: 12, fontWeight: '900', fontFamily: FONTS.black },
+  scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  score: { fontSize: 60, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.primary, lineHeight: 64 },
+  scoreUnit: { fontSize: 21, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.primary },
+  highRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  high: { fontSize: 14, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.inkSoft },
+  reviewCard: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 14, gap: 2 },
+  reviewItem: { paddingTop: 9, paddingHorizontal: 6, paddingBottom: 5 },
+  reviewDivider: { borderTopWidth: 2, borderTopColor: '#EFE9F5', borderStyle: 'dashed' },
+  reviewQ: { fontSize: 13.5, fontWeight: '700', fontFamily: FONTS.bold, color: COLORS.ink, lineHeight: 20 },
+  reviewA: { fontSize: 14.5, fontWeight: '900', fontFamily: FONTS.black, marginTop: 3 },
+  reviewALabel: { color: COLORS.inkSoft, fontSize: 12, fontWeight: '800', fontFamily: FONTS.exbold },
+  btnText: { color: '#fff', fontSize: 18, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1 },
+  homeLink: { paddingVertical: 8, paddingHorizontal: 14 },
+  homeLinkText: { fontSize: 14.5, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.inkSoft, textDecorationLine: 'underline' },
+});
 
 // ───────────────────────── 共通ボタン ─────────────────────────
 function BigButton({ label, color, icon, onPress }: { label: string; color: string; icon?: number; onPress: () => void }) {
@@ -828,7 +1003,7 @@ function BigButton({ label, color, icon, onPress }: { label: string; color: stri
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bg },
   noPointerEvents: { pointerEvents: 'none' },
-  muteBtn: { position: 'absolute', top: 10, right: 12, zIndex: 200, width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  muteBtn: { position: 'absolute', top: 14, right: 14, zIndex: 200, width: 40, height: 40, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center', shadowColor: COLORS.surfaceEdge, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   confettiLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 150, alignItems: 'center', justifyContent: 'flex-start' },
   levelupBadge: { position: 'absolute', top: -52, left: 0, right: 0, alignItems: 'center', zIndex: 50 },
 
@@ -868,7 +1043,7 @@ const styles = StyleSheet.create({
 
   // ゲーム
   gameRoot: { flex: 1, width: '100%', maxWidth: 480, alignSelf: 'center' },
-  gameTop: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16, paddingTop: 24, gap: 11 },
+  gameTop: { flex: 1, alignItems: 'stretch', justifyContent: 'center', paddingHorizontal: 16, paddingTop: 24, gap: 11 },
 
   hud: { flexDirection: 'row', alignItems: 'stretch', justifyContent: 'space-between', width: '100%', maxWidth: 430, gap: 8 },
   hudCard: {
@@ -927,10 +1102,19 @@ const styles = StyleSheet.create({
   bigBtnIcon: { marginVertical: -4 },
 
   // フィードバック
-  fbOverlay: { position: 'absolute', top: '30%', left: 0, right: 0, alignItems: 'center' },
-  fbBubble: { paddingHorizontal: 30, paddingVertical: 16, borderRadius: 22, alignItems: 'center' },
-  fbText: { color: '#fff', fontSize: 26, fontWeight: '900', fontFamily: FONTS.black },
-  fbDelta: { color: '#fff', fontSize: 17, fontWeight: '800', fontFamily: FONTS.exbold, marginTop: 2 },
+  fbOverlay: { position: 'absolute', top: '34%', left: 0, right: 0, alignItems: 'center' },
+  fbWord: { fontSize: 40, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 2, textShadowColor: '#fff', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 7 },
+  fbPill: { marginTop: 6, paddingHorizontal: 17, paddingVertical: 5, borderRadius: 999, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  fbPillText: { color: '#fff', fontSize: 17, fontWeight: '900', fontFamily: FONTS.black },
+
+  // 昇格演出
+  promoOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(50,40,75,0.42)' },
+  promoCard: { width: 290, backgroundColor: COLORS.surface, borderRadius: 30, paddingHorizontal: 22, paddingTop: 24, paddingBottom: 24, alignItems: 'center', gap: 8, overflow: 'hidden' },
+  promoEyebrow: { color: COLORS.primary, fontSize: 13, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 3 },
+  promoTitle: { color: COLORS.ink, fontSize: 23, fontWeight: '900', fontFamily: FONTS.black },
+  promoBadge: { paddingHorizontal: 18, paddingVertical: 6, borderRadius: 999, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  promoBadgeText: { color: '#fff', fontSize: 14, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1 },
+  promoName: { color: COLORS.ink, fontSize: 15.5, fontWeight: '900', fontFamily: FONTS.black, textAlign: 'center', lineHeight: 23 },
 
   // 結果
   resultScroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 36, paddingHorizontal: 22, gap: 14, width: '100%', maxWidth: 460, alignSelf: 'center' },

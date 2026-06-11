@@ -10,6 +10,7 @@
     "expo": "~56.0.9",
     "expo-audio": "~56.0.11",
     "expo-font": "~56.0.5",
+    "expo-linear-gradient": "~56.0.4",
     "expo-status-bar": "~56.0.4",
     "lottie-react": "^2.4.1",
     "lottie-react-native": "~7.3.4",
