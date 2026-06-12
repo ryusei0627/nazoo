@@ -1,7 +1,4 @@
-// Expoデフォルト設定を拡張し、Rive(.riv)をアセットとして扱えるようにする
+// Expoデフォルトのmetro設定
 const { getDefaultConfig } = require('expo/metro-config');
 
-const config = getDefaultConfig(__dirname);
-config.resolver.assetExts.push('riv');
-
-module.exports = config;
+module.exports = getDefaultConfig(__dirname);

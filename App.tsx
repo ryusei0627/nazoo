@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
-  Image,
   Platform,
   Pressable,
   ScrollView,
@@ -33,7 +32,6 @@ import { MOTION, useReducedMotion } from './src/motion';
 import { CandyButton, StickerCard, CardTab, NzIcon, NzStar, PromoRays } from './src/ui';
 
 const CONFETTI = require('./assets/lottie/confetti.json');
-const LEVELUP = require('./assets/lottie/levelup.json');
 
 // レベル（難易度1-4）ごとのマスコット動物 ＝「動物園コンプ」方式。
 // 進むほど新しい動物に会える。マスコットはSVG＋コードアニメ（AnimatedMascot）で自作。
@@ -51,22 +49,6 @@ type WrongItem = { text: string; answer: string };
 
 const MAX_INPUT = 16;
 
-// UIアイコン画像（Codex生成・透過PNG）
-const ICON_TIMER = require('./assets/icons/icon_timer.png');
-const ICON_HINT = require('./assets/icons/icon_hint.png');
-const ICON_SKIP = require('./assets/icons/icon_skip.png');
-const ICON_SOUND_ON = require('./assets/icons/icon_sound_on.png');
-const ICON_SOUND_OFF = require('./assets/icons/icon_sound_off.png');
-const ICON_INPUT = require('./assets/icons/icon_input.png');
-const ICON_BONUS_TIME = require('./assets/icons/icon_bonus_time.png');
-const ICON_LEVEL_UP = require('./assets/icons/icon_level_up.png');
-const ICON_CROWN = require('./assets/icons/icon_crown.png');
-const ICON_STAR = require('./assets/icons/icon_star.png');
-const ICON_PLAY = require('./assets/icons/icon_play.png');
-const ICON_RETRY = require('./assets/icons/icon_retry.png');
-const ICON_SHARE = require('./assets/icons/icon_share.png');
-const ICON_LAUREL = require('./assets/icons/icon_laurel.png');
-
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -82,10 +64,6 @@ QUESTIONS.forEach((q) => POOLS[q.difficulty].push(q));
 const lastResult: { current: { score: number; wrongs: WrongItem[]; isNewRecord: boolean } } = {
   current: { score: 0, wrongs: [], isNewRecord: false },
 };
-
-function IconImage({ source, size = 22, style }: { source: number; size?: number; style?: any }) {
-  return <Image source={source} style={[{ width: size, height: size }, style]} resizeMode="contain" />;
-}
 
 function MountMotion({
   children,
@@ -205,49 +183,6 @@ export default function App() {
       )}
     </View>
   );
-}
-
-// ───────────────────────── 共通パーツ ─────────────────────────
-function Ribbon({ label, color, tail }: { label: string; color: string; tail: string }) {
-  return (
-    <View style={styles.ribbonWrap}>
-      <View style={[styles.ribbonTailL, { borderRightColor: tail }]} />
-      <View style={[styles.ribbon, { backgroundColor: color }]}>
-        <Text style={styles.ribbonText}>{label}</Text>
-      </View>
-      <View style={[styles.ribbonTailR, { borderLeftColor: tail }]} />
-    </View>
-  );
-}
-
-function Stars({ d, total = 5 }: { d: number; total?: number }) {
-  return (
-    <View style={{ flexDirection: 'row', gap: 1 }}>
-      {Array.from({ length: total }).map((_, i) => (
-        <IconImage key={i} source={ICON_STAR} size={13} style={{ opacity: i < d ? 1 : 0.35 }} />
-      ))}
-    </View>
-  );
-}
-
-function Caret() {
-  const reducedMotion = useReducedMotion();
-  const op = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    if (reducedMotion) {
-      op.setValue(0.75);
-      return;
-    }
-    const blink = Animated.loop(
-      Animated.sequence([
-        Animated.timing(op, { toValue: 0, duration: 500, useNativeDriver: false }),
-        Animated.timing(op, { toValue: 1, duration: 500, useNativeDriver: false }),
-      ])
-    );
-    blink.start();
-    return () => blink.stop();
-  }, [op, reducedMotion]);
-  return <Animated.View style={[styles.caret, { opacity: op }]} />;
 }
 
 // 一度だけ再生して、ms経過後に消えるLottie（Web/ネイティブ両対応で確実に消す）
@@ -976,132 +911,18 @@ const rs = StyleSheet.create({
   homeLinkText: { fontSize: 14.5, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.inkSoft, textDecorationLine: 'underline' },
 });
 
-// ───────────────────────── 共通ボタン ─────────────────────────
-function BigButton({ label, color, icon, onPress }: { label: string; color: string; icon?: number; onPress: () => void }) {
-  const reducedMotion = useReducedMotion();
-  const scale = useRef(new Animated.Value(1)).current;
-  return (
-    <Pressable
-      onPressIn={() => {
-        if (!reducedMotion) Animated.spring(scale, { toValue: 0.96, useNativeDriver: false }).start();
-      }}
-      onPressOut={() => {
-        if (!reducedMotion) Animated.spring(scale, { toValue: 1, friction: 4, useNativeDriver: false }).start();
-      }}
-      onPress={onPress}
-      style={{ width: '100%', maxWidth: 420 }}
-    >
-      <Animated.View style={[styles.bigBtn, { backgroundColor: color, transform: [{ scale }] }]}>
-        <Text style={styles.bigBtnText}>{label}</Text>
-        {icon ? <IconImage source={icon} size={24} style={styles.bigBtnIcon} /> : null}
-      </Animated.View>
-    </Pressable>
-  );
-}
-
 // ───────────────────────── スタイル ─────────────────────────
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bg },
   noPointerEvents: { pointerEvents: 'none' },
   muteBtn: { position: 'absolute', top: 14, right: 14, zIndex: 200, width: 40, height: 40, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center', shadowColor: COLORS.surfaceEdge, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   confettiLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 150, alignItems: 'center', justifyContent: 'flex-start' },
-  levelupBadge: { position: 'absolute', top: -52, left: 0, right: 0, alignItems: 'center', zIndex: 50 },
 
-  // 共通：リボン
-  ribbonWrap: { flexDirection: 'row', alignItems: 'center', alignSelf: 'center' },
-  ribbon: { paddingHorizontal: 20, paddingVertical: 6, borderRadius: 8 },
-  ribbonText: { color: '#fff', fontWeight: '900', fontFamily: FONTS.black, fontSize: 14, letterSpacing: 0.5 },
-  ribbonTailL: { width: 0, height: 0, borderTopWidth: 10, borderBottomWidth: 10, borderRightWidth: 10, borderTopColor: 'transparent', borderBottomColor: 'transparent', marginRight: -3 },
-  ribbonTailR: { width: 0, height: 0, borderTopWidth: 10, borderBottomWidth: 10, borderLeftWidth: 10, borderTopColor: 'transparent', borderBottomColor: 'transparent', marginLeft: -3 },
-
-  // ホーム
-  homeScroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 26, paddingHorizontal: 22, gap: 12, width: '100%', maxWidth: 460, alignSelf: 'center' },
-  heroStage: { width: 190, height: 176, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  logoBlock: { alignItems: 'center', gap: 6 },
-  logoRow: { flexDirection: 'row', marginTop: 2 },
-  logoLetter: { fontSize: 58, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: -1, textShadowColor: 'rgba(0,0,0,0.12)', textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 2 },
-  howCard: {
-    backgroundColor: COLORS.card, borderRadius: 24, paddingHorizontal: 18, paddingTop: 26, paddingBottom: 18, width: '100%', maxWidth: 420, gap: 12, marginTop: 8,
-    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 3,
-  },
-  howTab: { position: 'absolute', top: -14, alignSelf: 'center', backgroundColor: '#F6D9A8', paddingHorizontal: 18, paddingVertical: 5, borderRadius: 14 },
-  howTabText: { fontWeight: '900', fontFamily: FONTS.black, color: '#9A6A2A', fontSize: 13 },
-  ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  ruleIcon: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  ruleIconImage: { marginVertical: -3 },
-  ruleTitle: { fontSize: 15, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.ink },
-  ruleSub: { fontSize: 11.5, fontWeight: '600', fontFamily: FONTS.medium, color: COLORS.inkSoft, marginTop: 1 },
-
-  highPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFFDF7', borderRadius: 18, paddingHorizontal: 22, paddingVertical: 12, marginTop: 4,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 2,
-  },
-  highLabel: { fontSize: 14, color: COLORS.inkSoft, fontWeight: '800', fontFamily: FONTS.exbold },
-  highIcon: { marginVertical: -5 },
-  highValue: { fontSize: 24, color: COLORS.primary, fontWeight: '900', fontFamily: FONTS.black, marginLeft: 4 },
-  highUnit: { fontSize: 14, color: COLORS.primary, fontWeight: '900', fontFamily: FONTS.black },
-
-  // ゲーム
+  // ゲーム枠
   gameRoot: { flex: 1, width: '100%', maxWidth: 480, alignSelf: 'center' },
   gameTop: { flex: 1, alignItems: 'stretch', justifyContent: 'center', paddingHorizontal: 16, paddingTop: 24, gap: 11 },
 
-  hud: { flexDirection: 'row', alignItems: 'stretch', justifyContent: 'space-between', width: '100%', maxWidth: 430, gap: 8 },
-  hudCard: {
-    flex: 1, backgroundColor: COLORS.card, borderRadius: 16, paddingTop: 18, paddingBottom: 8, alignItems: 'center',
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2,
-  },
-  hudTab: { position: 'absolute', top: -9, paddingHorizontal: 12, paddingVertical: 3, borderRadius: 10 },
-  hudTabText: { color: '#fff', fontWeight: '900', fontFamily: FONTS.black, fontSize: 11 },
-  hudValue: { fontSize: 24, color: COLORS.ink, fontWeight: '900', fontFamily: FONTS.black },
-  hudUnit: { fontSize: 12, fontWeight: '900', fontFamily: FONTS.black },
-  hudLevel: {
-    flex: 1.15, borderRadius: 16, alignItems: 'center', justifyContent: 'center', paddingVertical: 8, gap: 3,
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 3 }, elevation: 2,
-  },
-  hudLevelText: { color: '#fff', fontWeight: '900', fontFamily: FONTS.black, fontSize: 13 },
-
-  barRow: { flexDirection: 'row', alignItems: 'center', gap: 6, width: '100%', maxWidth: 430 },
-  barTrack: { flex: 1, height: 12, backgroundColor: COLORS.track, borderRadius: 7, overflow: 'hidden' },
-  barFill: { height: '100%', borderRadius: 7 },
-
-  qCard: {
-    backgroundColor: COLORS.card, borderRadius: 22, paddingHorizontal: 22, paddingVertical: 26, width: '100%', maxWidth: 430, minHeight: 120, justifyContent: 'center',
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 4,
-  },
-  qBadge: { position: 'absolute', top: -12, left: 16, width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.teal, alignItems: 'center', justifyContent: 'center', borderWidth: 3, borderColor: COLORS.bg },
-  qBadgeText: { color: '#fff', fontWeight: '900', fontFamily: FONTS.black, fontSize: 15 },
-  qText: { fontSize: 20, lineHeight: 30, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.ink, textAlign: 'center' },
-  hintBox: { marginTop: 14, backgroundColor: '#FFF6D6', borderRadius: 14, padding: 12 },
-  hintContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
-  hintText: { flex: 1, fontSize: 14, color: '#9A7B00', fontWeight: '700', fontFamily: FONTS.bold, textAlign: 'center' },
-  peekOwl: { position: 'absolute', right: 4, bottom: -14, width: 58, height: 58 },
-  peekMascot: { position: 'absolute', right: -4, bottom: -20, width: 78, height: 78, alignItems: 'center', justifyContent: 'center' },
-
-  inputBox: {
-    width: '100%', maxWidth: 430, minHeight: 52, backgroundColor: '#fff', borderRadius: 16, borderWidth: 2, borderColor: COLORS.track,
-    paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-  },
-  inputText: { fontSize: 23, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.ink, letterSpacing: 1 },
-  inputPlaceholder: { fontSize: 17, fontWeight: '700', fontFamily: FONTS.bold, color: COLORS.inkSoft },
-  caret: { width: 2, height: 24, backgroundColor: COLORS.primary, marginLeft: 3, borderRadius: 1 },
-
-  subRow: { flexDirection: 'row', gap: 10, width: '100%', maxWidth: 430 },
-  hintBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.yellow, borderRadius: 14, paddingVertical: 11 },
-  subBtnIcon: { marginVertical: -4 },
-  hintBtnText: { fontWeight: '900', fontFamily: FONTS.black, color: '#fff', fontSize: 14 },
-  hintCount: { backgroundColor: '#7A5A00', minWidth: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
-  hintCountText: { color: '#fff', fontWeight: '900', fontFamily: FONTS.black, fontSize: 12 },
-  skipBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: COLORS.danger, borderRadius: 14, paddingVertical: 11 },
-  skipBtnText: { fontWeight: '900', fontFamily: FONTS.black, color: '#fff', fontSize: 14 },
-  skipPenaltyText: { fontWeight: '900', fontFamily: FONTS.black, color: '#fff', fontSize: 12, opacity: 0.85 },
-  subBtnDisabled: { opacity: 0.45 },
-  subBtnPressed: { opacity: 0.82, transform: [{ scale: 0.98 }] },
-
-  bigBtn: { borderRadius: 18, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10, width: '100%', shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 5 }, elevation: 3 },
-  bigBtnText: { color: '#fff', fontSize: 19, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1 },
-  bigBtnIcon: { marginVertical: -4 },
-
-  // フィードバック
+  // フィードバック（せいかい/ざんねん スタンプ）
   fbOverlay: { position: 'absolute', top: '34%', left: 0, right: 0, alignItems: 'center' },
   fbWord: { fontSize: 40, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 2, textShadowColor: '#fff', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 7 },
   fbPill: { marginTop: 6, paddingHorizontal: 17, paddingVertical: 5, borderRadius: 999, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
@@ -1115,35 +936,4 @@ const styles = StyleSheet.create({
   promoBadge: { paddingHorizontal: 18, paddingVertical: 6, borderRadius: 999, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   promoBadgeText: { color: '#fff', fontSize: 14, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1 },
   promoName: { color: COLORS.ink, fontSize: 15.5, fontWeight: '900', fontFamily: FONTS.black, textAlign: 'center', lineHeight: 23 },
-
-  // 結果
-  resultScroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 36, paddingHorizontal: 22, gap: 14, width: '100%', maxWidth: 460, alignSelf: 'center' },
-  resultTitle: { fontSize: 32, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.primary, textShadowColor: 'rgba(0,0,0,0.12)', textShadowOffset: { width: 0, height: 3 }, textShadowRadius: 2, marginBottom: 4 },
-  resultScoreCard: {
-    backgroundColor: COLORS.card, borderRadius: 24, paddingVertical: 22, paddingHorizontal: 40, alignItems: 'center', marginTop: 8, gap: 6,
-    shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 4,
-  },
-  scoreRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  scoreLaurel: { marginHorizontal: -4 },
-  resultScore: { fontSize: 64, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.primary, lineHeight: 70 },
-  resultScoreUnit: { fontSize: 24 },
-  resultHighRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  resultHighIcon: { marginVertical: -5 },
-  resultHigh: { fontSize: 15, color: COLORS.inkSoft, fontWeight: '800', fontFamily: FONTS.exbold },
-
-  reviewBox: {
-    backgroundColor: COLORS.card, borderRadius: 20, paddingHorizontal: 18, paddingTop: 22, paddingBottom: 16, width: '100%', maxWidth: 420, gap: 8,
-    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 3,
-  },
-  reviewTagRow: { flexDirection: 'row' },
-  reviewTag: { backgroundColor: '#EDEAF6', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3 },
-  reviewTagText: { fontSize: 11, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.purple },
-  reviewItem: { gap: 2 },
-  reviewItemDivider: { borderTopWidth: 1, borderTopColor: '#EFEDF5', paddingTop: 9, marginTop: 1 },
-  reviewQ: { fontSize: 14, color: COLORS.ink, fontWeight: '700', fontFamily: FONTS.bold, lineHeight: 21 },
-  reviewA: { fontSize: 15, color: COLORS.ink, fontWeight: '800', fontFamily: FONTS.exbold },
-  reviewMore: { fontSize: 12, color: COLORS.inkSoft, fontWeight: '700', fontFamily: FONTS.bold, marginTop: 2 },
-
-  homeLink: { paddingVertical: 8 },
-  homeLinkText: { color: COLORS.inkSoft, fontWeight: '800', fontFamily: FONTS.exbold, fontSize: 15 },
 });
