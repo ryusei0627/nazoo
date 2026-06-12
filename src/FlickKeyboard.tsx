@@ -149,14 +149,14 @@ export default function FlickKeyboard({ onChar, onCycle, onDelete, onSubmit, can
               ))}
             </View>
           ))}
-          {/* 4行目：ー / わ / スペーサ */}
+          {/* 4行目：小゛゜ / わ / スペーサ（「ー」は「わ」の右フリックで入力） */}
           <View style={{ flexDirection: 'row', gap: GAP, height: KEY_H }}>
-            <FuncKey variant="muted" label="ー" onPress={() => onChar('ー')} style={{ flex: 1 }} />
+            <FuncKey variant="muted" label="小" sub="゛ ゜" onPress={onCycle} style={{ flex: 1 }} />
             <FlickKey map={KEYS[9]} onChar={onChar} onTap={onTap} />
             <View style={{ flex: 1 }} />
           </View>
         </View>
-        {/* 右：削除 / 小゛゜ / こたえる（縦長） */}
+        {/* 右：削除 / こたえる（縦長） */}
         <View style={{ flex: 1, gap: GAP }}>
           <FuncKey variant="muted" onPress={onDelete} style={{ height: KEY_H }}>
             <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke={COLORS.inkSoft} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
@@ -164,7 +164,6 @@ export default function FlickKeyboard({ onChar, onCycle, onDelete, onSubmit, can
               <Path d="M12 9.5 L17 14.5 M17 9.5 L12 14.5" />
             </Svg>
           </FuncKey>
-          <FuncKey variant="muted" label="小" sub="゛ ゜" onPress={onCycle} style={{ height: KEY_H }} />
           <FuncKey variant="submit" onPress={onSubmit} disabled={!canSubmit} style={{ flex: 1 }}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
               <Path d="M4 13 L9 18 L20 6" />
