@@ -3,6 +3,7 @@ import {
   Animated,
   Dimensions,
   Easing,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -31,6 +32,7 @@ import LottieFX from './src/Lottie';
 import AnimatedMascot, { AnimalKey, MascotMood } from './src/AnimatedMascot';
 import { MOTION, useReducedMotion } from './src/motion';
 import { CandyButton, StickerCard, CardTab, NzIcon, NzStar, PromoRays } from './src/ui';
+import { SITE } from './src/links';
 
 const CONFETTI = require('./assets/lottie/confetti.json');
 
@@ -45,7 +47,7 @@ const LEVEL_MASCOTS: Record<number, { animal: AnimalKey; name: string; species: 
 };
 const WIN = Dimensions.get('window');
 
-type Screen = 'home' | 'playing' | 'result';
+type Screen = 'home' | 'playing' | 'result' | 'credits';
 type WrongItem = { text: string; answer: string };
 
 const MAX_INPUT = 16;
@@ -202,7 +204,10 @@ export default function App() {
       <Decor />
       <MuteButton muted={muted} onPress={toggleMute} reducedMotion={reducedMotion} />
 
-      {screen === 'home' && <HomeScreen highScore={highScore} onStart={() => setScreen('playing')} />}
+      {screen === 'home' && (
+        <HomeScreen highScore={highScore} onStart={() => setScreen('playing')} onCredits={() => setScreen('credits')} />
+      )}
+      {screen === 'credits' && <CreditsScreen onBack={() => setScreen('home')} />}
       {screen === 'playing' && (
         <GameScreen
           onEnd={(score, wrongs) => {
@@ -277,9 +282,11 @@ const hs = StyleSheet.create({
   highValue: { fontSize: 22, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.primary },
   highUnit: { fontSize: 13, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.primary },
   startText: { color: '#fff', fontSize: 21, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1 },
+  footerLink: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 14, marginTop: 2 },
+  footerLinkText: { fontSize: 13, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.inkSoft, textDecorationLine: 'underline' },
 });
 
-function HomeScreen({ highScore, onStart }: { highScore: number; onStart: () => void }) {
+function HomeScreen({ highScore, onStart, onCredits }: { highScore: number; onStart: () => void; onCredits: () => void }) {
   const rules: { icon: string; color: string; title: React.ReactNode; sub: string }[] = [
     { icon: 'clock', color: COLORS.teal, title: 'じかんないに こたえよう！', sub: '0びょうになったら ゲームオーバー' },
     { icon: 'pencil', color: COLORS.primary, title: 'ひらがなで こたえてね！', sub: 'フリックでも タップでも OK' },
@@ -336,6 +343,13 @@ function HomeScreen({ highScore, onStart }: { highScore: number; onStart: () => 
           <NzIcon name="play" size={22} color="#fff" />
           <Text style={hs.startText}>スタート！</Text>
         </CandyButton>
+      </MountMotion>
+
+      <MountMotion delay={350} style={{ width: '100%', alignItems: 'center' }}>
+        <Pressable onPress={onCredits} style={hs.footerLink} hitSlop={8}>
+          <NzIcon name="sparkle" size={14} color={COLORS.inkSoft} />
+          <Text style={hs.footerLinkText}>クレジット・利用規約</Text>
+        </Pressable>
       </MountMotion>
     </ScrollView>
   );
@@ -946,6 +960,115 @@ const rs = StyleSheet.create({
   btnText: { color: '#fff', fontSize: 18, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1 },
   homeLink: { paddingVertical: 8, paddingHorizontal: 14 },
   homeLinkText: { fontSize: 14.5, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.inkSoft, textDecorationLine: 'underline' },
+});
+
+// ───────────────────────── クレジット ─────────────────────────
+type CreditEntry = { label: string; value: string; note?: string };
+type CreditGroup = { tab: string; color: string; entries: CreditEntry[] };
+
+const CREDIT_GROUPS: CreditGroup[] = [
+  {
+    tab: 'フォント',
+    color: COLORS.purple,
+    entries: [
+      { label: 'M PLUS Rounded 1c', value: '© FONTWORKS Inc.', note: 'SIL Open Font License 1.1' },
+    ],
+  },
+  {
+    tab: 'えんしゅつ',
+    color: COLORS.teal,
+    entries: [
+      { label: 'かみふぶきアニメ', value: 'LottieFiles', note: 'Lottie Simple License' },
+    ],
+  },
+  {
+    tab: 'オリジナル',
+    color: COLORS.primary,
+    entries: [
+      { label: 'マスコット & アイコン', value: 'Nazoo オリジナル', note: 'すべてコードで作画' },
+      { label: 'こうかおん', value: 'Nazoo オリジナル', note: 'アプリ内で自動生成' },
+      { label: 'なぞなぞ問題', value: 'Nazoo セレクト', note: '名作なぞなぞを再構成' },
+    ],
+  },
+  {
+    tab: 'ぎじゅつ',
+    color: COLORS.yellow,
+    entries: [
+      { label: 'アプリ基盤', value: 'React Native / Expo', note: 'オープンソース' },
+      { label: 'グラフィック', value: 'react-native-svg ほか', note: 'オープンソース' },
+    ],
+  },
+];
+
+function CreditsScreen({ onBack }: { onBack: () => void }) {
+  const openLink = (url: string) => {
+    Linking.openURL(url).catch(() => {});
+  };
+
+  return (
+    <View style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={cs.scroll}>
+        <MountMotion style={{ alignItems: 'center', gap: 8 }}>
+          <View style={cs.heroIcon}>
+            <NzIcon name="sparkle" size={30} color="#fff" />
+          </View>
+          <Text style={cs.title}>クレジット</Text>
+          <Text style={cs.subtitle}>Nazoo をつくっている なかまたち</Text>
+        </MountMotion>
+
+        {CREDIT_GROUPS.map((g, gi) => (
+          <MountMotion key={g.tab} delay={70 + gi * 60} style={{ width: '100%', alignItems: 'center' }}>
+            <StickerCard style={cs.card}>
+              <CardTab label={g.tab} color={g.color} />
+              {g.entries.map((e, ei) => (
+                <View key={ei} style={[cs.row, ei > 0 && cs.rowDivider]}>
+                  <Text style={cs.rowLabel}>{e.label}</Text>
+                  <Text style={cs.rowValue}>{e.value}</Text>
+                  {!!e.note && <Text style={cs.rowNote}>{e.note}</Text>}
+                </View>
+              ))}
+            </StickerCard>
+          </MountMotion>
+        ))}
+
+        <MountMotion delay={70 + CREDIT_GROUPS.length * 60} style={{ width: '100%', alignItems: 'center', gap: 11 }}>
+          <Text style={cs.legalLead}>きやく・プライバシー</Text>
+          <CandyButton color={COLORS.teal} edge={COLORS.tealDark} height={52} onPress={() => openLink(SITE.terms)} style={{ width: '100%' }}>
+            <NzIcon name="bulb" size={18} color="#fff" />
+            <Text style={cs.legalBtnText}>利用規約</Text>
+          </CandyButton>
+          <CandyButton color={COLORS.purple} edge={COLORS.purpleDark} height={52} onPress={() => openLink(SITE.privacy)} style={{ width: '100%' }}>
+            <NzIcon name="crown" size={18} color="#fff" />
+            <Text style={cs.legalBtnText}>プライバシーポリシー</Text>
+          </CandyButton>
+        </MountMotion>
+
+        <MountMotion delay={120 + CREDIT_GROUPS.length * 60} style={{ width: '100%', alignItems: 'center', gap: 14, marginTop: 4 }}>
+          <Text style={cs.copyright}>© 2026 Nazoo</Text>
+          <CandyButton onPress={onBack} style={{ width: '100%' }}>
+            <NzIcon name="retry" size={19} color="#fff" />
+            <Text style={cs.legalBtnText}>ホームへ もどる</Text>
+          </CandyButton>
+        </MountMotion>
+      </ScrollView>
+    </View>
+  );
+}
+
+const cs = StyleSheet.create({
+  scroll: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 22, paddingTop: 64, paddingBottom: 40, gap: 14 },
+  heroIcon: { width: 64, height: 64, borderRadius: 22, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', shadowColor: COLORS.primaryDark, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 4 }, elevation: 2 },
+  title: { fontSize: 28, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.ink, letterSpacing: 1, textShadowColor: '#fff', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 },
+  subtitle: { fontSize: 13, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.inkSoft },
+  card: { width: '100%', paddingHorizontal: 18, paddingTop: 24, paddingBottom: 14 },
+  row: { paddingVertical: 9 },
+  rowDivider: { borderTopWidth: 2, borderTopColor: '#EFE9F5', borderStyle: 'dashed' },
+  rowLabel: { fontSize: 12, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.inkSoft, letterSpacing: 0.5 },
+  rowValue: { fontSize: 16, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.ink, marginTop: 1 },
+  rowNote: { fontSize: 11.5, fontWeight: '700', fontFamily: FONTS.bold, color: COLORS.inkSoft, marginTop: 2 },
+  legalLead: { fontSize: 13, fontWeight: '900', fontFamily: FONTS.black, color: COLORS.inkSoft, letterSpacing: 1, marginTop: 4 },
+  legalBtnText: { color: '#fff', fontSize: 17, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1 },
+  copyright: { fontSize: 12, fontWeight: '800', fontFamily: FONTS.exbold, color: COLORS.inkSoft, letterSpacing: 1 },
 });
 
 // ───────────────────────── スタイル ─────────────────────────
