@@ -14,6 +14,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import Constants from 'expo-constants';
 import { useFonts } from 'expo-font';
 import * as Sharing from 'expo-sharing';
 import { captureRef } from 'react-native-view-shot';
@@ -358,6 +359,8 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
   // 高さ基準だとPCウィンドウの高さがスマホと被るため、幅で判定する。
   const { width: winW } = useWindowDimensions();
   const wideScreen = winW >= 520;
+  // ノッチ／Dynamic Island ぶんだけHUDを下げる（実機でHUDがステータスバーと重なる崩れを防ぐ）
+  const insetTop = Constants.statusBarHeight || 0;
   const [, force] = useState(0);
   const rerender = () => force((n) => n + 1);
 
@@ -586,7 +589,7 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
   const fbTranslateY = fbAnim.interpolate({ inputRange: [0, 1], outputRange: [10, 0] });
 
   return (
-    <View style={styles.gameRoot}>
+    <View style={[styles.gameRoot, { paddingTop: insetTop }]}>
       <View style={[styles.gameTop, wideScreen && { justifyContent: 'center' }]}>
         <View style={gs.topGroup}>
         {/* HUD */}
