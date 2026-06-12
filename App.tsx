@@ -353,10 +353,11 @@ const gs = StyleSheet.create({
 
 function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => void }) {
   const reducedMotion = useReducedMotion();
-  // 画面が縦に高い時（PC・タブレット）は、上下に間延びさせず中央に寄せて詰める。
-  // スマホ（〜932pt程度）は space-between のままで操作ボタンをキーボード直上に。
-  const { height: winH } = useWindowDimensions();
-  const tallScreen = winH >= 950;
+  // PC・タブレット（幅広）は、上下に間延びさせず中央に寄せて詰める。
+  // スマホ縦（幅狭・コンテンツ列は最大480）は space-between のまま操作ボタンをキーボード直上に。
+  // 高さ基準だとPCウィンドウの高さがスマホと被るため、幅で判定する。
+  const { width: winW } = useWindowDimensions();
+  const wideScreen = winW >= 520;
   const [, force] = useState(0);
   const rerender = () => force((n) => n + 1);
 
@@ -586,7 +587,7 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
 
   return (
     <View style={styles.gameRoot}>
-      <View style={[styles.gameTop, tallScreen && { justifyContent: 'center' }]}>
+      <View style={[styles.gameTop, wideScreen && { justifyContent: 'center' }]}>
         <View style={gs.topGroup}>
         {/* HUD */}
         <View style={gs.hudRow}>
