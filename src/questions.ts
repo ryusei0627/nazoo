@@ -35,6 +35,8 @@ export const QUESTIONS: Question[] = [
   { id: 118, difficulty: 1, text: '入り口は1つ、出口は2つ。毎日はくものは？', answer: 'ズボン', accept: ['ずぼん'], hint: '足を2本通す' },
   { id: 119, difficulty: 1, text: '入り口は1つ、中に小さな部屋が5つ。冬に手にはめるものは？', answer: 'てぶくろ', accept: ['てぶくろ', '手袋'], hint: '指が5本入る' },
 
+  { id: 121, difficulty: 1, text: 'パンを見つけて思わず叫んでしまった動物は？', answer: 'パンダ', accept: ['ぱんだ'], hint: 'パンを見つけて「パン○！」とびっくり' },
+
   // ───────── 難易度2：ふつう（同音・ダジャレ・ちょいひねり）─────────
   { id: 201, difficulty: 2, text: 'マンションの中で、いちばんこわい場所は？', answer: 'かいだん', accept: ['かいだん', '怪談'], hint: 'のぼる方ではなく、こわい話の方' },
   { id: 202, difficulty: 2, text: 'お酢を手に持ったままコートでするスポーツは？', answer: 'テニス', accept: ['てにす'], hint: '「手に酢」' },
@@ -55,6 +57,9 @@ export const QUESTIONS: Question[] = [
   { id: 219, difficulty: 2, text: 'クマはクマでも、いつも手を洗っているきれい好きのクマは？', answer: 'アライグマ', accept: ['あらいぐま', '洗熊'], hint: '「洗い」＋クマ' },
   { id: 220, difficulty: 2, text: '「かいだん」の一番上の字と一番下の字をつなげると出てくる、入れ物は？', answer: 'かん', accept: ['かん', '缶'], hint: 'か「いだ」ん→か○。ジュースの入れ物' },
 
+  { id: 221, difficulty: 2, text: 'おじいちゃんといっしょに食べたい甘いものは？', answer: 'ソフトクリーム', accept: ['そふとくりーむ'], hint: 'おじいちゃん＝「祖父（そふ）」＋クリーム' },
+  { id: 222, difficulty: 2, text: 'まだ完成していない果物は？', answer: 'みかん', accept: ['みかん', '蜜柑'], hint: 'まだ完成していない＝「未完（みかん）」' },
+
   // ───────── 難易度3：むずかしい（二重の意味・ひっかけ・見立て・推理）─────────
   { id: 301, difficulty: 3, text: 'とればとるほど、どんどん増えていくものは？', answer: 'とし', accept: ['とし', '年', 'ねんれい', '年齢'], hint: '毎年かならず1つ増える' },
   { id: 302, difficulty: 3, text: '買うときは黒、使うときは赤、すてるときは灰色になるものは？', answer: 'すみ', accept: ['すみ', '炭'], hint: 'バーベキューで火をおこすのに使う' },
@@ -69,6 +74,10 @@ export const QUESTIONS: Question[] = [
   { id: 316, difficulty: 3, text: '生まれてから一度も子育てをしたことがない人の性格を、ひとことで言うと？', answer: 'いくじなし', accept: ['いくじなし', '意気地なし'], hint: '「育児なし」と同じ音＝おくびょう' },
   { id: 317, difficulty: 3, text: 'スポーツを教えてくれる人がいそうな都道府県は？', answer: 'こうち', accept: ['こうち', '高知'], hint: '「コーチ」と同じ音' },
   { id: 318, difficulty: 3, text: 'アルファベットの中で、のばして言うと、がんばる人を応援する言葉になるのは？', answer: 'える', accept: ['える', 'エル', 'L'], hint: 'L → 「エール」' },
+
+  { id: 321, difficulty: 3, text: '3つの黒い輪でできている食べ物は？', answer: 'クロワッサン', accept: ['くろわっさん'], hint: '黒（くろ）＋輪（わ）＋三（さん）' },
+  { id: 322, difficulty: 3, text: '田んぼに火をつけると、なーんだ？', answer: '畑', accept: ['はたけ', '畑'], hint: '漢字で考えて。「田」に「火」を足すと…' },
+  { id: 323, difficulty: 3, text: 'ハムのなる木は何の木でしょう？', answer: '松', accept: ['まつ', '松'], hint: 'ハムは じっくり熟成を「○つ」もの。同じ音の木は？' },
 
   // ───────── 難易度4：げきむず（ダジャレ・語呂・数字読み替え・多段ひらめき）─────────
   { id: 401, difficulty: 4, text: '大工さんに「長ーいドアノブを作って」と注文した、歴史上の人物は？', answer: 'おだのぶなが', accept: ['おだのぶなが', '織田信長'], hint: 'オーダー＋ノブ＋長い' },
@@ -88,6 +97,7 @@ export const QUESTIONS: Question[] = [
   { id: 416, difficulty: 4, text: 'サルの鳴き声「ウキー」の中に、椅子（いす）を入れると出てくるお酒は？', answer: 'ウイスキー', accept: ['ういすきー'], hint: 'ウ＋イス＋キー' },
   { id: 418, difficulty: 4, text: '戦う相手（敵）を、イライラさせるメキシコのお酒は？', answer: 'テキーラ', accept: ['てきーら'], hint: '敵（てき）＋イラ' },
   { id: 419, difficulty: 4, text: '「だ」の点々（゛）を取られると、辞めさせられてしまう学校は？', answer: 'だいがく', accept: ['だいがく', '大学'], hint: '大学（だいがく）の濁点を取ると「たいがく（退学）」' },
+  { id: 421, difficulty: 4, text: '腹黒い人がお正月に買うものは？', answer: '福袋', accept: ['ふくぶくろ', '福袋'], hint: 'お正月の「ふく」のふくろ。「腹（ふく）」が黒い人が…' },
 ];
 
 export const DIFFICULTY_LABELS: Record<number, string> = {
