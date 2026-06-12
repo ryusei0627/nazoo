@@ -14,13 +14,15 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
+import * as Sharing from 'expo-sharing';
+import { captureRef } from 'react-native-view-shot';
 import { QUESTIONS, DIFFICULTY_LABELS, Question } from './src/questions';
 import { isCorrect } from './src/matching';
-import { getHighScore, setHighScore, getMuted, setMuted } from './src/storage';
+import { getHighScore, setHighScore } from './src/storage';
 import { COLORS, DIFFICULTY_COLORS, DIFFICULTY_EDGES, DS, LOGO_COLORS, FONTS, GAME_CONFIG as G } from './src/theme';
 import FlickKeyboard from './src/FlickKeyboard';
 import { cycleKana } from './src/kana';
-import { sfx, setSfxEnabled } from './src/sfx';
+import { sfx } from './src/sfx';
 import Decor from './src/Decor';
 import LottieFX from './src/Lottie';
 import AnimatedMascot, { AnimalKey, MascotMood } from './src/AnimatedMascot';
@@ -40,6 +42,8 @@ const LEVEL_MASCOTS: Record<number, { animal: AnimalKey; name: string; species: 
   4: { animal: 'owl', name: 'はかせ', species: 'フクロウ' },
 };
 const WIN = Dimensions.get('window');
+const SHARE_IMAGE_WIDTH = 720;
+const SHARE_IMAGE_HEIGHT = 900;
 
 type Screen = 'home' | 'playing' | 'result' | 'credits';
 type WrongItem = { text: string; answer: string };
@@ -134,38 +138,9 @@ function BouncyLogo() {
   );
 }
 
-function MuteButton({ muted, onPress, reducedMotion }: { muted: boolean; onPress: () => void; reducedMotion: boolean }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const spin = useRef(new Animated.Value(0)).current;
-
-  const runPressIn = () => {
-    if (reducedMotion) return;
-    Animated.spring(scale, { toValue: 0.88, friction: 6, tension: 180, useNativeDriver: false }).start();
-  };
-  const runPressOut = () => {
-    if (reducedMotion) return;
-    spin.setValue(0);
-    Animated.parallel([
-      Animated.spring(scale, { toValue: 1, friction: 5, tension: 160, useNativeDriver: false }),
-      Animated.timing(spin, { toValue: 1, duration: MOTION.calm, easing: MOTION.easeOut, useNativeDriver: false }),
-    ]).start();
-  };
-
-  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', muted ? '-12deg' : '12deg'] });
-  return (
-    <Pressable onPress={onPress} onPressIn={runPressIn} onPressOut={runPressOut} style={styles.muteBtn} hitSlop={10}>
-      <Animated.View style={{ transform: [{ scale }, { rotate }] }}>
-        <NzIcon name={muted ? 'soundOff' : 'soundOn'} size={22} color={COLORS.ink} />
-      </Animated.View>
-    </Pressable>
-  );
-}
-
 export default function App() {
   const [screen, setScreen] = useState<Screen>('home');
   const [highScore, setHigh] = useState(0);
-  const [muted, setMutedState] = useState(false);
-  const reducedMotion = useReducedMotion();
 
   const [fontsLoaded, fontError] = useFonts({
     // サブセット済みフォント（使用文字のみ／各約300KB）。再生成は scripts/subset-fonts.py
@@ -177,19 +152,7 @@ export default function App() {
 
   useEffect(() => {
     getHighScore().then(setHigh);
-    getMuted().then((m) => {
-      setMutedState(m);
-      setSfxEnabled(!m);
-    });
   }, []);
-
-  const toggleMute = () => {
-    const next = !muted;
-    setMutedState(next);
-    setSfxEnabled(!next);
-    setMuted(next);
-    if (!next) sfx.tap();
-  };
 
   // フォント読込中はスプラッシュ。失敗(fontError)時もアプリは進める（端末標準フォントにフォールバック）
   if (!fontsLoaded && !fontError) return <View style={{ flex: 1, backgroundColor: COLORS.bg }} />;
@@ -198,7 +161,6 @@ export default function App() {
     <View style={styles.root}>
       <StatusBar style="dark" />
       <Decor />
-      <MuteButton muted={muted} onPress={toggleMute} reducedMotion={reducedMotion} />
 
       {screen === 'home' && (
         <HomeScreen highScore={highScore} onStart={() => setScreen('playing')} onCredits={() => setScreen('credits')} />
@@ -372,6 +334,8 @@ const gs = StyleSheet.create({
   peek: { position: 'absolute', right: -2, bottom: -16 },
   hintBubble: { marginHorizontal: 4, backgroundColor: '#FFF6D8', borderWidth: 2, borderColor: '#F2CF6B', borderStyle: 'dashed', borderRadius: 14, paddingHorizontal: 13, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 8 },
   hintText: { color: '#8A6200', fontSize: 13.5, fontWeight: '800', fontFamily: FONTS.exbold, flex: 1 },
+  topGroup: { gap: 11 },
+  bottomGroup: { gap: 11 },
   answerBlock: { alignItems: 'center', gap: 3 },
   answerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, minHeight: 48, flexWrap: 'wrap' },
   tile: { width: 38, height: 46, backgroundColor: COLORS.surface, borderRadius: 12, alignItems: 'center', justifyContent: 'center', shadowColor: COLORS.surfaceEdge, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
@@ -618,6 +582,7 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
   return (
     <View style={styles.gameRoot}>
       <View style={styles.gameTop}>
+        <View style={gs.topGroup}>
         {/* HUD */}
         <View style={gs.hudRow}>
           <View style={gs.chip}>
@@ -681,7 +646,9 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
             </View>
           </StickerCard>
         </Animated.View>
+        </View>
 
+        <View style={gs.bottomGroup}>
         {/* こたえタイル */}
         <View style={gs.answerBlock}>
           <View style={gs.answerRow}>
@@ -695,7 +662,7 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
               <View key={'g' + i} style={[gs.tile, gs.tileGhost]} />
             ))}
           </View>
-          {input.length === 0 && <Text style={gs.answerCaption}>ひらがなで こたえてね</Text>}
+          <Text style={gs.answerCaption}>ひらがなで こたえてね</Text>
         </View>
 
         {/* 補助ボタン */}
@@ -712,6 +679,7 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
             <Text style={gs.subText} numberOfLines={1}>スキップ</Text>
             <Text style={gs.skipPenalty} numberOfLines={1}>−{G.skipPenalty}びょう</Text>
           </CandyButton>
+        </View>
         </View>
       </View>
 
@@ -824,7 +792,10 @@ function ResultScreen({
 }) {
   const reducedMotion = useReducedMotion();
   const pop = useRef(new Animated.Value(0)).current;
+  const shareCardRef = useRef<View>(null);
   const [shownScore, setShownScore] = useState(reducedMotion ? result.score : 0);
+  const [sharing, setSharing] = useState(false);
+  const [renderShareCard, setRenderShareCard] = useState(false);
   useEffect(() => {
     if (reducedMotion) {
       pop.setValue(1);
@@ -842,21 +813,67 @@ function ResultScreen({
     return () => clearInterval(id);
   }, [pop, reducedMotion, result.score]);
 
-  const shareResult = async () => {
-    const msg = `Nazooで${result.score}問正解しました！\nあなたは何問解ける？`;
+  const shareMessage = `Nazooで${result.score}問正解しました！\nあなたは何問解ける？\n${SITE.home}`;
+
+  const shareTextOnly = useCallback(async () => {
     try {
       if (Platform.OS === 'web') {
         const nav: any = typeof navigator !== 'undefined' ? navigator : null;
-        if (nav?.share) await nav.share({ text: msg });
+        if (nav?.share) await nav.share({ text: shareMessage, title: 'Nazooの結果' });
         else if (nav?.clipboard) {
-          await nav.clipboard.writeText(msg);
+          await nav.clipboard.writeText(shareMessage);
           alert('結果をコピーしました！SNSに貼り付けてシェアしてね');
-        } else alert(msg);
+        } else alert(shareMessage);
       } else {
-        await Share.share({ message: msg });
+        await Share.share({ message: shareMessage });
       }
     } catch {
       // キャンセル時など
+    }
+  }, [shareMessage]);
+
+  const shareImage = useCallback(async () => {
+    if (!shareCardRef.current) return false;
+    const uri = await captureRef(shareCardRef.current, {
+      format: 'png',
+      quality: 1,
+      result: Platform.OS === 'web' ? 'data-uri' : 'tmpfile',
+    });
+
+    if (Platform.OS === 'web') {
+      const nav: any = typeof navigator !== 'undefined' ? navigator : null;
+      const FileCtor = (globalThis as any).File;
+      if (!nav?.share || !nav?.canShare || !FileCtor || !uri.startsWith('data:image/png')) return false;
+
+      const blob = await (await fetch(uri)).blob();
+      const file = new FileCtor([blob], 'nazoo-result.png', { type: 'image/png' });
+      if (!nav.canShare({ files: [file] })) return false;
+      await nav.share({ files: [file], text: shareMessage, title: 'Nazooの結果' });
+      return true;
+    }
+
+    if (!(await Sharing.isAvailableAsync())) return false;
+    await Sharing.shareAsync(uri, {
+      dialogTitle: 'Nazooの結果をシェア',
+      mimeType: 'image/png',
+      UTI: 'public.png',
+    });
+    return true;
+  }, [shareMessage]);
+
+  const shareResult = async () => {
+    if (sharing) return;
+    setSharing(true);
+    setRenderShareCard(true);
+    try {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      const sharedImage = await shareImage();
+      if (!sharedImage) await shareTextOnly();
+    } catch {
+      await shareTextOnly();
+    } finally {
+      setRenderShareCard(false);
+      setSharing(false);
     }
   };
 
@@ -868,6 +885,18 @@ function ResultScreen({
 
   return (
     <View style={{ flex: 1, width: '100%' }}>
+      {renderShareCard && (
+        <View aria-hidden pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={rs.shareStage}>
+          <ResultShareCard
+            ref={shareCardRef}
+            score={result.score}
+            highScore={Math.max(highScore, result.score)}
+            isNewRecord={result.isNewRecord}
+            mascot={mascot}
+            mood={resultMood}
+          />
+        </View>
+      )}
       {result.isNewRecord && (
         <OneShot key="rconf" source={CONFETTI} width={WIN.width} height={WIN.height} style={styles.confettiLayer} ms={5200} disabled={reducedMotion} />
       )}
@@ -924,9 +953,9 @@ function ResultScreen({
           <NzIcon name="retry" size={20} color="#fff" />
           <Text style={rs.btnText}>もういちど あそぶ</Text>
         </CandyButton>
-        <CandyButton color={COLORS.teal} edge={COLORS.tealDark} height={52} onPress={shareResult} style={{ width: '100%' }}>
+        <CandyButton color={COLORS.teal} edge={COLORS.tealDark} height={52} onPress={shareResult} disabled={sharing} style={{ width: '100%' }}>
           <NzIcon name="share" size={19} color="#fff" />
-          <Text style={rs.btnText}>けっかを シェア</Text>
+          <Text style={rs.btnText}>{sharing ? 'シェアじゅんび中' : 'けっかを シェア'}</Text>
         </CandyButton>
         <Pressable onPress={onHome} style={rs.homeLink}>
           <Text style={rs.homeLinkText}>ホームへ もどる</Text>
@@ -936,7 +965,114 @@ function ResultScreen({
   );
 }
 
+const ResultShareCard = React.forwardRef<
+  View,
+  {
+    score: number;
+    highScore: number;
+    isNewRecord: boolean;
+    mascot: { animal: AnimalKey; name: string; species: string };
+    mood: MascotMood;
+  }
+>(function ResultShareCard({ score, highScore, isNewRecord, mascot, mood }, ref) {
+  const badgeText = isNewRecord ? 'NEW RECORD' : 'PLAY RESULT';
+  const leadText = score >= 16 ? 'さいなんかんエリア到達！' : score >= 10 ? 'かなりいい記録！' : score >= 5 ? 'いい感じに進んだよ！' : 'つぎはもっと先へ！';
+
+  return (
+    <View ref={ref} collapsable={false} style={rs.shareCard}>
+      <View style={[rs.shareStripe, { backgroundColor: COLORS.primary }]} />
+      <View style={[rs.shareStripe, rs.shareStripeSecond, { backgroundColor: COLORS.teal }]} />
+      <View style={[rs.shareStripe, rs.shareStripeThird, { backgroundColor: COLORS.yellow }]} />
+
+      <View style={rs.shareLogoRow}>
+        {'Nazoo'.split('').map((ch, i) => (
+          <Text key={`${ch}-${i}`} style={[rs.shareLogoLetter, { color: LOGO_COLORS[i] }]}>
+            {ch}
+          </Text>
+        ))}
+      </View>
+
+      <View style={rs.shareBadge}>
+        <Text style={rs.shareBadgeText}>{badgeText}</Text>
+      </View>
+
+      <AnimatedMascot animal={mascot.animal} size={210} mood={mood} reactionKey={score} />
+
+      <View style={rs.shareScorePanel}>
+        <Text style={rs.shareScoreLabel}>せいかいすう</Text>
+        <View style={rs.shareScoreRow}>
+          <NzIcon name="crown" size={42} color={COLORS.yellow} />
+          <Text style={rs.shareScore}>{score}</Text>
+          <Text style={rs.shareScoreUnit}>もん</Text>
+        </View>
+        <Text style={rs.shareHighScore}>ハイスコア {highScore} もん</Text>
+      </View>
+
+      <Text style={rs.shareLead}>{leadText}</Text>
+      <Text style={rs.shareMascot}>
+        LV.{Math.min(4, Math.floor(score / G.levelUpEvery) + 1)} {mascot.name}（{mascot.species}）と きろくに ちょうせん
+      </Text>
+      <Text style={rs.shareUrl}>{SITE.home}</Text>
+    </View>
+  );
+});
+
 const rs = StyleSheet.create({
+  shareStage: { position: 'absolute', left: -10000, top: 0, width: SHARE_IMAGE_WIDTH, height: SHARE_IMAGE_HEIGHT },
+  shareCard: {
+    width: SHARE_IMAGE_WIDTH,
+    height: SHARE_IMAGE_HEIGHT,
+    overflow: 'hidden',
+    backgroundColor: COLORS.bgBottom,
+    alignItems: 'center',
+    paddingHorizontal: 54,
+    paddingTop: 48,
+    paddingBottom: 40,
+  },
+  shareStripe: { position: 'absolute', left: -90, top: 86, width: SHARE_IMAGE_WIDTH + 180, height: 42, transform: [{ rotate: '-8deg' }], opacity: 0.9 },
+  shareStripeSecond: { top: 152, opacity: 0.85 },
+  shareStripeThird: { top: 218, opacity: 0.75 },
+  shareLogoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  shareLogoLetter: {
+    fontSize: 76,
+    lineHeight: 84,
+    fontWeight: '900',
+    fontFamily: FONTS.black,
+    textShadowColor: '#FFFFFF',
+    textShadowOffset: { width: 0, height: 5 },
+    textShadowRadius: 0,
+  },
+  shareBadge: {
+    marginTop: 18,
+    backgroundColor: COLORS.yellow,
+    borderRadius: 999,
+    paddingHorizontal: 26,
+    paddingVertical: 9,
+    shadowColor: COLORS.yellowDark,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 5 },
+  },
+  shareBadgeText: { color: COLORS.sunInk, fontSize: 22, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1 },
+  shareScorePanel: {
+    alignSelf: 'stretch',
+    marginTop: 18,
+    backgroundColor: COLORS.surface,
+    borderRadius: 34,
+    borderWidth: 5,
+    borderColor: COLORS.surfaceEdge,
+    paddingVertical: 28,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+  },
+  shareScoreLabel: { color: COLORS.inkSoft, fontSize: 24, fontWeight: '900', fontFamily: FONTS.black },
+  shareScoreRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 12, marginTop: 2 },
+  shareScore: { color: COLORS.primary, fontSize: 124, lineHeight: 132, fontWeight: '900', fontFamily: FONTS.black },
+  shareScoreUnit: { color: COLORS.primary, fontSize: 34, lineHeight: 60, fontWeight: '900', fontFamily: FONTS.black },
+  shareHighScore: { marginTop: 4, color: COLORS.inkSoft, fontSize: 24, fontWeight: '800', fontFamily: FONTS.exbold },
+  shareLead: { marginTop: 28, color: COLORS.ink, fontSize: 34, lineHeight: 42, fontWeight: '900', fontFamily: FONTS.black, textAlign: 'center' },
+  shareMascot: { marginTop: 12, color: COLORS.inkSoft, fontSize: 22, lineHeight: 30, fontWeight: '800', fontFamily: FONTS.exbold, textAlign: 'center' },
+  shareUrl: { marginTop: 'auto', color: COLORS.purple, fontSize: 24, fontWeight: '900', fontFamily: FONTS.black },
   scroll: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 22, paddingTop: 60, paddingBottom: 36, gap: 15 },
   title: { fontSize: 30, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1, textShadowColor: '#fff', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 5 },
   scoreCard: { paddingHorizontal: 20, paddingTop: 30, paddingBottom: 20, alignItems: 'center', gap: 4 },
@@ -1071,12 +1207,11 @@ const cs = StyleSheet.create({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.bg },
   noPointerEvents: { pointerEvents: 'none' },
-  muteBtn: { position: 'absolute', top: 14, right: 14, zIndex: 200, width: 40, height: 40, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center', shadowColor: COLORS.surfaceEdge, shadowOpacity: 1, shadowRadius: 0, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
   confettiLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 150, alignItems: 'center', justifyContent: 'flex-start' },
 
   // ゲーム枠
   gameRoot: { flex: 1, width: '100%', maxWidth: 480, alignSelf: 'center' },
-  gameTop: { flex: 1, alignItems: 'stretch', justifyContent: 'center', paddingHorizontal: 16, paddingTop: 24, gap: 11 },
+  gameTop: { flex: 1, alignItems: 'stretch', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 6 },
 
   // フィードバック（せいかい/ざんねん スタンプ）
   fbOverlay: { position: 'absolute', top: '34%', left: 0, right: 0, alignItems: 'center' },

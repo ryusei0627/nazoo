@@ -5,6 +5,7 @@ const appJson = require('./app.json');
 
 module.exports = () => {
   const expo = { ...appJson.expo };
+  expo.plugins = Array.from(new Set([...(expo.plugins || []), 'expo-sharing']));
   const base = process.env.NAZOO_BASE_URL;
   if (base) {
     expo.experiments = { ...(expo.experiments || {}), baseUrl: base };
