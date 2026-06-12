@@ -590,8 +590,7 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
 
   return (
     <View style={[styles.gameRoot, { paddingTop: insetTop }]}>
-      <View style={[styles.gameTop, wideScreen && { justifyContent: 'center' }]}>
-        <View style={gs.topGroup}>
+      <View style={[styles.gameTop, { justifyContent: wideScreen ? 'center' : 'flex-start' }]}>
         {/* HUD */}
         <View style={gs.hudRow}>
           <View style={gs.chip}>
@@ -627,19 +626,22 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
           </View>
         </View>
 
-        {/* 問題カード */}
+        {/* 問題カード（スマホでは余白を埋めるため flex:1 で伸びる） */}
         <Animated.View
-          style={{
-            opacity: questionIntro,
-            transform: [
-              { scale: pop },
-              { scale: qScale },
-              { translateX: shake.interpolate({ inputRange: [-1, 1], outputRange: [-8, 8] }) },
-              { translateY: qTranslateY },
-            ],
-          }}
+          style={[
+            !wideScreen && { flex: 1 },
+            {
+              opacity: questionIntro,
+              transform: [
+                { scale: pop },
+                { scale: qScale },
+                { translateX: shake.interpolate({ inputRange: [-1, 1], outputRange: [-8, 8] }) },
+                { translateY: qTranslateY },
+              ],
+            },
+          ]}
         >
-          <StickerCard style={gs.qCard}>
+          <StickerCard grow={!wideScreen} style={gs.qCard}>
             <View style={gs.qBadge}>
               <Text style={gs.qBadgeText}>Q{solvedRef.current + 1}</Text>
             </View>
@@ -655,9 +657,7 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
             </View>
           </StickerCard>
         </Animated.View>
-        </View>
 
-        <View style={gs.bottomGroup}>
         {/* こたえタイル */}
         <View style={gs.answerBlock}>
           <View style={gs.answerRow}>
@@ -688,7 +688,6 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
             <Text style={gs.subText} numberOfLines={1}>スキップ</Text>
             <Text style={gs.skipPenalty} numberOfLines={1}>−{G.skipPenalty}びょう</Text>
           </CandyButton>
-        </View>
         </View>
       </View>
 

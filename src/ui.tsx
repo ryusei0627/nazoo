@@ -204,22 +204,25 @@ export function CandyButton({
 }
 
 // ── ステッカーカード（白・下エッジ＋ソフト影） ──
-export function StickerCard({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
+export function StickerCard({ children, style, grow }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; grow?: boolean }) {
   return (
     <View
-      style={{
-        alignSelf: 'stretch',
-        backgroundColor: COLORS.surfaceEdge,
-        borderRadius: DS.rLg,
-        paddingBottom: DS.cardEdge,
-        shadowColor: '#3D3A50',
-        shadowOpacity: 0.1,
-        shadowRadius: 14,
-        shadowOffset: { width: 0, height: 10 },
-        elevation: 4,
-      }}
+      style={[
+        {
+          alignSelf: 'stretch',
+          backgroundColor: COLORS.surfaceEdge,
+          borderRadius: DS.rLg,
+          paddingBottom: DS.cardEdge,
+          shadowColor: '#3D3A50',
+          shadowOpacity: 0.1,
+          shadowRadius: 14,
+          shadowOffset: { width: 0, height: 10 },
+          elevation: 4,
+        },
+        grow && { flex: 1 },
+      ]}
     >
-      <View style={[{ backgroundColor: COLORS.surface, borderRadius: DS.rLg }, style]}>{children}</View>
+      <View style={[{ backgroundColor: COLORS.surface, borderRadius: DS.rLg }, grow && { flex: 1 }, style]}>{children}</View>
     </View>
   );
 }
