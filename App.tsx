@@ -10,6 +10,7 @@ import {
   Share,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -352,6 +353,10 @@ const gs = StyleSheet.create({
 
 function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => void }) {
   const reducedMotion = useReducedMotion();
+  // 画面が縦に高い時（PC・タブレット）は、上下に間延びさせず中央に寄せて詰める。
+  // スマホ（〜932pt程度）は space-between のままで操作ボタンをキーボード直上に。
+  const { height: winH } = useWindowDimensions();
+  const tallScreen = winH >= 950;
   const [, force] = useState(0);
   const rerender = () => force((n) => n + 1);
 
@@ -581,7 +586,7 @@ function GameScreen({ onEnd }: { onEnd: (score: number, wrongs: WrongItem[]) => 
 
   return (
     <View style={styles.gameRoot}>
-      <View style={styles.gameTop}>
+      <View style={[styles.gameTop, tallScreen && { justifyContent: 'center' }]}>
         <View style={gs.topGroup}>
         {/* HUD */}
         <View style={gs.hudRow}>
@@ -813,7 +818,7 @@ function ResultScreen({
     return () => clearInterval(id);
   }, [pop, reducedMotion, result.score]);
 
-  const shareMessage = `Nazooで${result.score}問正解しました！\nあなたは何問解ける？\n${SITE.home}`;
+  const shareMessage = `Nazooで${result.score}問正解しました！\nあなたは何問解ける？`;
 
   const shareTextOnly = useCallback(async () => {
     try {
@@ -976,7 +981,7 @@ const ResultShareCard = React.forwardRef<
   }
 >(function ResultShareCard({ score, highScore, isNewRecord, mascot, mood }, ref) {
   const badgeText = isNewRecord ? 'NEW RECORD' : 'PLAY RESULT';
-  const leadText = score >= 16 ? 'さいなんかんエリア到達！' : score >= 10 ? 'かなりいい記録！' : score >= 5 ? 'いい感じに進んだよ！' : 'つぎはもっと先へ！';
+  const leadText = score >= 16 ? 'さいなんかんエリアとうたつ！' : score >= 10 ? 'かなりいいきろく！' : score >= 5 ? 'いい感じに進んだよ！' : 'つぎはもっとさきへ！';
 
   return (
     <View ref={ref} collapsable={false} style={rs.shareCard}>
@@ -1012,7 +1017,7 @@ const ResultShareCard = React.forwardRef<
       <Text style={rs.shareMascot}>
         LV.{Math.min(4, Math.floor(score / G.levelUpEvery) + 1)} {mascot.name}（{mascot.species}）と きろくに ちょうせん
       </Text>
-      <Text style={rs.shareUrl}>{SITE.home}</Text>
+      <Text style={rs.shareCopyright}>©︎Nazoo</Text>
     </View>
   );
 });
@@ -1029,10 +1034,10 @@ const rs = StyleSheet.create({
     paddingTop: 48,
     paddingBottom: 40,
   },
-  shareStripe: { position: 'absolute', left: -90, top: 86, width: SHARE_IMAGE_WIDTH + 180, height: 42, transform: [{ rotate: '-8deg' }], opacity: 0.9 },
-  shareStripeSecond: { top: 152, opacity: 0.85 },
-  shareStripeThird: { top: 218, opacity: 0.75 },
-  shareLogoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  shareStripe: { position: 'absolute', left: -90, top: 150, width: SHARE_IMAGE_WIDTH + 180, height: 42, transform: [{ rotate: '-8deg' }], opacity: 0.9 },
+  shareStripeSecond: { top: 216, opacity: 0.85 },
+  shareStripeThird: { top: 282, opacity: 0.75 },
+  shareLogoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 4, zIndex: 2 },
   shareLogoLetter: {
     fontSize: 76,
     lineHeight: 84,
@@ -1040,7 +1045,7 @@ const rs = StyleSheet.create({
     fontFamily: FONTS.black,
     textShadowColor: '#FFFFFF',
     textShadowOffset: { width: 0, height: 5 },
-    textShadowRadius: 0,
+    textShadowRadius: 2,
   },
   shareBadge: {
     marginTop: 18,
@@ -1072,7 +1077,7 @@ const rs = StyleSheet.create({
   shareHighScore: { marginTop: 4, color: COLORS.inkSoft, fontSize: 24, fontWeight: '800', fontFamily: FONTS.exbold },
   shareLead: { marginTop: 28, color: COLORS.ink, fontSize: 34, lineHeight: 42, fontWeight: '900', fontFamily: FONTS.black, textAlign: 'center' },
   shareMascot: { marginTop: 12, color: COLORS.inkSoft, fontSize: 22, lineHeight: 30, fontWeight: '800', fontFamily: FONTS.exbold, textAlign: 'center' },
-  shareUrl: { marginTop: 'auto', color: COLORS.purple, fontSize: 24, fontWeight: '900', fontFamily: FONTS.black },
+  shareCopyright: { position: 'absolute', right: 34, bottom: 24, color: COLORS.inkSoft, fontSize: 16, fontWeight: '800', fontFamily: FONTS.exbold },
   scroll: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 22, paddingTop: 60, paddingBottom: 36, gap: 15 },
   title: { fontSize: 30, fontWeight: '900', fontFamily: FONTS.black, letterSpacing: 1, textShadowColor: '#fff', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 5 },
   scoreCard: { paddingHorizontal: 20, paddingTop: 30, paddingBottom: 20, alignItems: 'center', gap: 4 },
@@ -1211,7 +1216,7 @@ const styles = StyleSheet.create({
 
   // ゲーム枠
   gameRoot: { flex: 1, width: '100%', maxWidth: 480, alignSelf: 'center' },
-  gameTop: { flex: 1, alignItems: 'stretch', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 6 },
+  gameTop: { flex: 1, alignItems: 'stretch', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 24, paddingBottom: 6, gap: 16 },
 
   // フィードバック（せいかい/ざんねん スタンプ）
   fbOverlay: { position: 'absolute', top: '34%', left: 0, right: 0, alignItems: 'center' },
