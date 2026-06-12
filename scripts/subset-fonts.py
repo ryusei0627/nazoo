@@ -81,7 +81,7 @@ for sub, fam in WEIGHTS.items():
         "--layout-features=*",
         "--no-hinting",
         "--desubroutinize",
-        "--name-IDs=",
+        "--name-IDs=*",  # 名前テーブルを残す（iOSのフォント登録に必須。空にするとネイティブで読込失敗）
         "--notdef-outline",
         "--recalc-bounds",
     ], check=True)

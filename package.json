@@ -21,12 +21,13 @@
   "devDependencies": {
     "@expo-google-fonts/m-plus-rounded-1c": "^0.4.3",
     "@types/react": "~19.2.2",
+    "puppeteer-core": "^25.1.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "build": "expo export --platform web",
     "subset-fonts": "python3 scripts/subset-fonts.py"

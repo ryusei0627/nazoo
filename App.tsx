@@ -167,7 +167,7 @@ export default function App() {
   const [muted, setMutedState] = useState(false);
   const reducedMotion = useReducedMotion();
 
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     // サブセット済みフォント（使用文字のみ／各約300KB）。再生成は scripts/subset-fonts.py
     MPLUSRounded1c_500Medium: require('./assets/fonts/MPLUSRounded1c_500Medium.ttf'),
     MPLUSRounded1c_700Bold: require('./assets/fonts/MPLUSRounded1c_700Bold.ttf'),
@@ -191,7 +191,8 @@ export default function App() {
     if (!next) sfx.tap();
   };
 
-  if (!fontsLoaded) return <View style={{ flex: 1, backgroundColor: COLORS.bg }} />;
+  // フォント読込中はスプラッシュ。失敗(fontError)時もアプリは進める（端末標準フォントにフォールバック）
+  if (!fontsLoaded && !fontError) return <View style={{ flex: 1, backgroundColor: COLORS.bg }} />;
 
   return (
     <View style={styles.root}>
