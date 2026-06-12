@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
-    "@expo-google-fonts/m-plus-rounded-1c": "^0.4.3",
     "@expo/metro-runtime": "~56.0.14",
     "@react-native-async-storage/async-storage": "2.2.0",
     "expo": "~56.0.9",
@@ -20,6 +19,7 @@
     "react-native-web": "^0.21.2"
   },
   "devDependencies": {
+    "@expo-google-fonts/m-plus-rounded-1c": "^0.4.3",
     "@types/react": "~19.2.2",
     "typescript": "~6.0.3"
   },
@@ -28,7 +28,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build": "expo export --platform web"
+    "build": "expo export --platform web",
+    "subset-fonts": "python3 scripts/subset-fonts.py"
   },
   "private": true,
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"

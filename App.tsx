@@ -13,13 +13,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import {
-  useFonts,
-  MPLUSRounded1c_500Medium,
-  MPLUSRounded1c_700Bold,
-  MPLUSRounded1c_800ExtraBold,
-  MPLUSRounded1c_900Black,
-} from '@expo-google-fonts/m-plus-rounded-1c';
+import { useFonts } from 'expo-font';
 import { QUESTIONS, DIFFICULTY_LABELS, Question } from './src/questions';
 import { isCorrect } from './src/matching';
 import { getHighScore, setHighScore, getMuted, setMuted } from './src/storage';
@@ -174,10 +168,11 @@ export default function App() {
   const reducedMotion = useReducedMotion();
 
   const [fontsLoaded] = useFonts({
-    MPLUSRounded1c_500Medium,
-    MPLUSRounded1c_700Bold,
-    MPLUSRounded1c_800ExtraBold,
-    MPLUSRounded1c_900Black,
+    // サブセット済みフォント（使用文字のみ／各約300KB）。再生成は scripts/subset-fonts.py
+    MPLUSRounded1c_500Medium: require('./assets/fonts/MPLUSRounded1c_500Medium.ttf'),
+    MPLUSRounded1c_700Bold: require('./assets/fonts/MPLUSRounded1c_700Bold.ttf'),
+    MPLUSRounded1c_800ExtraBold: require('./assets/fonts/MPLUSRounded1c_800ExtraBold.ttf'),
+    MPLUSRounded1c_900Black: require('./assets/fonts/MPLUSRounded1c_900Black.ttf'),
   });
 
   useEffect(() => {
