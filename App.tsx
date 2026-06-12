@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
+  Easing,
   Platform,
   Pressable,
   ScrollView,
@@ -93,6 +94,48 @@ function MountMotion({
 
   const translateY = progress.interpolate({ inputRange: [0, 1], outputRange: [14, 0] });
   return <Animated.View style={[style, { opacity: progress, transform: [{ translateY }] }]}>{children}</Animated.View>;
+}
+
+// ホームロゴ「Nazoo」を1文字ずつ時差で弾ませる（デザインの logo-bounce 相当・2.8sループ）
+const LOGO_CYCLE = 2800;
+function BounceLetter({ ch, color, index, reduced }: { ch: string; color: string; index: number; reduced: boolean }) {
+  const v = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (reduced) return;
+    let cancelled = false;
+    const loop = () => {
+      Animated.sequence([
+        Animated.timing(v, { toValue: 1, duration: 180, easing: MOTION.easeOut, useNativeDriver: false }),
+        Animated.timing(v, { toValue: 0, duration: 360, easing: Easing.bounce, useNativeDriver: false }),
+        Animated.delay(LOGO_CYCLE - 540),
+      ]).start(({ finished }) => {
+        if (finished && !cancelled) loop();
+      });
+    };
+    const t = setTimeout(loop, index * 120); // 文字ごとの時差で波打たせる
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [v, index, reduced]);
+
+  const translateY = v.interpolate({ inputRange: [0, 1], outputRange: [0, -12] });
+  const rotate = v.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '-4deg'] });
+  return (
+    <Animated.Text style={[hs.logoLetter, { color, transform: [{ translateY }, { rotate }] }]}>{ch}</Animated.Text>
+  );
+}
+
+function BouncyLogo() {
+  const reduced = useReducedMotion();
+  return (
+    <View style={hs.logoRow}>
+      {'Nazoo'.split('').map((ch, i) => (
+        <BounceLetter key={i} ch={ch} color={LOGO_COLORS[i]} index={i} reduced={reduced} />
+      ))}
+    </View>
+  );
 }
 
 function MuteButton({ muted, onPress, reducedMotion }: { muted: boolean; onPress: () => void; reducedMotion: boolean }) {
@@ -247,13 +290,7 @@ function HomeScreen({ highScore, onStart }: { highScore: number; onStart: () => 
   return (
     <ScrollView contentContainerStyle={hs.scroll}>
       <MountMotion style={{ alignItems: 'center', gap: 10 }}>
-        <View style={hs.logoRow}>
-          {'Nazoo'.split('').map((ch, i) => (
-            <Text key={i} style={[hs.logoLetter, { color: LOGO_COLORS[i] }]}>
-              {ch}
-            </Text>
-          ))}
-        </View>
+        <BouncyLogo />
         <View style={hs.ribbon}>
           <Text style={hs.ribbonText}>エンドレスなぞなぞ</Text>
         </View>
